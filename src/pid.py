@@ -52,7 +52,7 @@ class PIDcontroller:
         self.body_set_point = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
         self.pid_output = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
 
-    def mixer(self, thrust, roll, pitch, yaw, x_vel, y_vel) -> torch.Tensor:
+    def mixer(self, thrust, roll, pitch, yaw) -> torch.Tensor:
         M1 = self.base_rpm + (thrust - roll - pitch - yaw)
         M2 = self.base_rpm + (thrust - roll + pitch + yaw)
         M3 = self.base_rpm + (thrust + roll + pitch - yaw)
