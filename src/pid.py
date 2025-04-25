@@ -20,13 +20,13 @@ class PIDcontroller:
         self.imu = imu_sim
         # Shape: (n, 3)
         self.kp = torch.tensor([config.get("kp_r", 0.0), config.get("kp_p", 0.0), config.get("kp_y", 0.0)], 
-                                device=self.device).unsqueeze(1).repeat(self.env_num, 1)  
+                                device=self.device).unsqueeze(0).repeat(self.env_num, 1)  
         self.ki = torch.tensor([config.get("ki_r", 0.0), config.get("ki_p", 0.0), config.get("ki_y", 0.0)], 
-                                device=self.device).unsqueeze(1).repeat(self.env_num, 1)
+                                device=self.device).unsqueeze(0).repeat(self.env_num, 1)
         self.kd = torch.tensor([config.get("kd_r", 0.0), config.get("kd_p", 0.0), config.get("kd_y", 0.0)], 
-                                device=self.device).unsqueeze(1).repeat(self.env_num, 1)
+                                device=self.device).unsqueeze(0).repeat(self.env_num, 1)
         self.kf = torch.tensor([config.get("kf_r", 0.0), config.get("kf_p", 0.0), config.get("kf_y", 0.0)], 
-                                device=self.device).unsqueeze(1).repeat(self.env_num, 1)
+                                device=self.device).unsqueeze(0).repeat(self.env_num, 1)
 
         # self.entity_inertia = torch.tensor(config['inertia_matrix'], dtype=gs.tc_float)
         
@@ -49,16 +49,24 @@ class PIDcontroller:
         self.D_term = torch.zeros_like(self.P_term)
         self.F_term = torch.zeros_like(self.P_term)
 
-        self.body_set_point = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.body_set_point = torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float)
         self.pid_output = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.drone = None
 
-    def mixer(self, thrust, roll, pitch, yaw) -> torch.Tensor:
-        M1 = self.base_rpm + (thrust - roll - pitch - yaw)
-        M2 = self.base_rpm + (thrust - roll + pitch + yaw)
-        M3 = self.base_rpm + (thrust + roll + pitch - yaw)
-        M4 = self.base_rpm + (thrust + roll - pitch + yaw)
+    def set_entity(self, entity):
+        self.drone = entity
+
+    def mixer(self) -> torch.Tensor:
+        # M1 = self.base_rpm + (thrust - roll - pitch - yaw)
+        # M2 = self.base_rpm + (thrust - roll + pitch + yaw)
+        # M3 = self.base_rpm + (thrust + roll + pitch - yaw)
+        # M4 = self.base_rpm + (thrust + roll - pitch + yaw)
+        M1 = self.base_rpm
+        M2 = self.base_rpm
+        M3 = self.base_rpm
+        M4 = self.base_rpm
         throttle = self.rc_command["throttle"] * self.base_rpm
-        return torch.Tensor([M1, M2, M3, M4]) + throttle
+        return torch.tensor([M1, M2, M3, M4], device = self.device) + throttle
 
     def pid_update_TpaFactor(self):
         if (rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
@@ -69,26 +77,32 @@ class PIDcontroller:
             
             self.tpa_factor[:] = 1.0 - tpa_rate
 
-    def pid_loop(self):
+    def controller_step(self):
         self.imu.imu_update()
         self.pid_update_TpaFactor()
-        if self.rc_command["angle"] == 0:         # angle mode
-            self.angle_controller(self)
-        elif self.rc_command["angle"] == 1:       # angle rate mode
-            self.angle_rate_controller(self)
+        if self.rc_command["ANGLE"] == 0:         # angle mode
+            self.angle_controller()
+        elif self.rc_command["ANGLE"] == 1:       # angle rate mode
+            self.angle_rate_controller()
         else:                                     # undifined
             print("undifined mode, do nothing!!")
+            return
+        [M1, M2, M3, M4] = self.mixer()
+        self.drone.set_propellels_rpm([[M1, M2, M3, M4]])
+
 
     def angle_rate_controller(self):  # use previous-D-term PID controller
         self.body_set_point[:] = torch.tensor(list(rc_command.values())[:4]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = self.body_set_point[:,0:2] - self.imu.body_ang_vel
+        print(self.body_set_point)
+        cur_angle_rate_error = self.body_set_point[:,0:3] - self.imu.body_ang_vel
         self.P_term[:] = (cur_angle_rate_error * self.kp) * self.tpa_factor
         self.I_term[:] = self.I_term + cur_angle_rate_error * self.ki
         self.D_term[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd * self.tpa_factor    
         # TODO feedforward term 
         self.last_body_ang_vel[:] = self.imu.body_ang_vel
         self.pid_output[:] = self.P_term + self.I_term + self.D_term
-        
+    
+
     # def angle_rate_controller(self):   
 
 

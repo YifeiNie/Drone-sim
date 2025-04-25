@@ -67,12 +67,15 @@ class IMU_sim:
             }
         }
 
+    def set_entity(self, entity):
+        self.entity = entity
+
     def cal_cur_quat(self):
         self.body_quat[:] = self.entity.get_quat()
         self.body_quat_inv[:] = inv_quat(self.body_quat)
 
     def gyro_update(self):
-        self.cal_cur_quat(self)    # since gyro_update has the highest freq
+        self.cal_cur_quat()    # since gyro_update has the highest freq
         cur_ang_vel = self.entity.get_ang()
         self.body_ang_vel[:] = cur_ang_vel
         self.world_ang_vel[:] = transform_by_quat(cur_ang_vel, self.body_quat_inv)
@@ -116,8 +119,8 @@ class IMU_sim:
 
     # update imu every step (defalt in 60Hz)
     def imu_update(self):
-        self.gyro_update(self)
-        self.acc_update(self, time.perf_counter() - self.last_time)
-        self.att_update(self)
+        self.gyro_update()
+        self.acc_update(time.perf_counter() - self.last_time)
+        self.att_update()
         self.last_time = time.perf_counter()
         

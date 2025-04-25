@@ -30,13 +30,13 @@ rc_data = {
 }
 
 rc_command = {
-    "yaw": None,
-    "pitch": None,
-    "roll": None,
-    "throttle": None,
-    "ANGLE": None,          # 0: angel, 1: angle_rate, 2: not defined
-    "ARM": None,            # 0: disarmed, 1: armed
-    "OFFBOARD": None,       # 0: manunal,  1: offboard
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "roll": 0.0,
+    "throttle": 0.0,
+    "ANGLE": 1,          # 0: angel, 1: angle_rate, 2: not defined
+    "ARM": 0,            # 0: disarmed, 1: armed
+    "OFFBOARD": 0,       # 0: manunal,  1: offboard
 }
 
 def clamp(min_val, max_val, value):
