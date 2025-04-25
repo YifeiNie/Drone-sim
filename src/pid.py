@@ -6,7 +6,6 @@ import argparse
 import genesis as gs
 import time
 import threading
-from .mavlink_sim import rc_command
 
 
 class PIDcontroller:
@@ -34,6 +33,7 @@ class PIDcontroller:
         self.base_rpm = config.get("base_rpm", 10000)
         self.dT = 1 / self.pid_freq
         self.tpa_factor = 1
+        self.tpa_rate = 0
 
         
         self.last_body_ang_vel = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
@@ -57,25 +57,25 @@ class PIDcontroller:
         self.drone = entity
 
     def mixer(self) -> torch.Tensor:
-        # M1 = self.base_rpm + (thrust - roll - pitch - yaw)
-        # M2 = self.base_rpm + (thrust - roll + pitch + yaw)
-        # M3 = self.base_rpm + (thrust + roll + pitch - yaw)
-        # M4 = self.base_rpm + (thrust + roll - pitch + yaw)
-        M1 = self.base_rpm
-        M2 = self.base_rpm
-        M3 = self.base_rpm
-        M4 = self.base_rpm
-        throttle = self.rc_command["throttle"] * self.base_rpm
+        M1 = self.base_rpm + (thrust - roll - pitch - yaw)
+        M2 = self.base_rpm + (thrust - roll + pitch + yaw)
+        M3 = self.base_rpm + (thrust + roll + pitch - yaw)
+        M4 = self.base_rpm + (thrust + roll - pitch + yaw)
+        # M1 = self.base_rpm
+        # M2 = self.base_rpm
+        # M3 = self.base_rpm
+        # M4 = self.base_rpm
+        throttle = self.rc_command["throttle"] * 1000
         return torch.tensor([M1, M2, M3, M4], device = self.device) + throttle
 
     def pid_update_TpaFactor(self):
-        if (rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
-            if (rc_command["throttle"] < 1.0): 
-                tpa_rate *= (rc_command["throttle"] - 0.35) / (1.0 - 0.35);            
+        if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
+            if (self.rc_command["throttle"] < 1.0): 
+                self.tpa_rate *= (self.rc_command["throttle"] - 0.35) / (1.0 - 0.35);            
             else:
-                tpa_rate = 0.0
+                self.tpa_rate = 0.0
             
-            self.tpa_factor[:] = 1.0 - tpa_rate
+            self.tpa_factor = 1.0 - self.tpa_rate
 
     def controller_step(self):
         self.imu.imu_update()
@@ -88,12 +88,12 @@ class PIDcontroller:
             print("undifined mode, do nothing!!")
             return
         [M1, M2, M3, M4] = self.mixer()
+        print([M1, M2, M3, M4])
         self.drone.set_propellels_rpm([[M1, M2, M3, M4]])
 
 
     def angle_rate_controller(self):  # use previous-D-term PID controller
-        self.body_set_point[:] = torch.tensor(list(rc_command.values())[:4]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        print(self.body_set_point)
+        self.body_set_point[:] = torch.tensor(list(self.rc_command.values())[:4]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         cur_angle_rate_error = self.body_set_point[:,0:3] - self.imu.body_ang_vel
         self.P_term[:] = (cur_angle_rate_error * self.kp) * self.tpa_factor
         self.I_term[:] = self.I_term + cur_angle_rate_error * self.ki
@@ -103,7 +103,8 @@ class PIDcontroller:
         self.pid_output[:] = self.P_term + self.I_term + self.D_term
     
 
-    # def angle_rate_controller(self):   
+    def angle_controller(self):  
+        print("do nothing") 
 
 
 

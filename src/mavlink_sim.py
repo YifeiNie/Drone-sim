@@ -67,17 +67,17 @@ def mavlink_receive_thread(device="/dev/ttyUSB0", baudrate=2000000, rc_config=No
                         "ch8": msg.chan8_raw,
                     })
                     # print("RC Data:", rc_data)
-                    rc_command["roll"][:] =      clamp(-1, 1, (rc_data[rc_config.get("ROLL", "ch1")] - 1500) / 500)      # scale to range [-1.0, 1.0]
-                    rc_command["pitch"][:] =     clamp(-1, 1, (rc_data[rc_config.get("PITCH", "ch2")] - 1500) / 500)
-                    rc_command["yaw"][:] =       clamp(-1, 1, (rc_data[rc_config.get("YAW", "ch3")] - 1500) / 500)
-                    rc_command["throttle"][:] =  clamp(0, 1, (rc_data[rc_config.get("throttle", "ch4")] - 1000) / 1000)
+                    rc_command["roll"] =      clamp(-1, 1, (rc_data[rc_config.get("ROLL", "ch1")] - 1500) / 500)      # scale to range [-1.0, 1.0]
+                    rc_command["pitch"] =     clamp(-1, 1, (rc_data[rc_config.get("PITCH", "ch2")] - 1500) / 500)
+                    rc_command["yaw"] =       clamp(-1, 1, (rc_data[rc_config.get("YAW", "ch3")] - 1500) / 500)
+                    rc_command["throttle"] =  clamp(0, 1, (rc_data[rc_config.get("throttle", "ch4")] - 1000) / 1000)
                     temp_angle = rc_data[rc_config.get("ANGLE", "ch6")]
                     temp_arm = rc_data[rc_config.get("ARM", "ch5")]
                     temp_offboard = rc_data[rc_config.get("OFFBOARD", "ch8")]
                     
-                    rc_command["ANGLE"][:] = 0 if temp_angle < 1400 else 1 if temp_angle <= 1700 else 0  
-                    rc_command["ARM"][:] = 1 if temp_arm < 1400 else 0          
-                    rc_command["OFFBOARD"][:] = 0 if temp_offboard < 1400 else 1     
+                    rc_command["ANGLE"] = 0 if temp_angle < 1400 else 1 if temp_angle <= 1700 else 0  
+                    rc_command["ARM"] = 1 if temp_arm > 1400 else 0          
+                    rc_command["OFFBOARD"] = 0 if temp_offboard < 1400 else 1     
 
                     print("RC Command:", rc_command)
 

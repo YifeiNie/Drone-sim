@@ -8,6 +8,7 @@ from src.pid import PIDcontroller
 from src.imu_sim import IMU_sim
 from src.mavlink_sim import rc_command
 from env.test_env import Test_env
+from src.mavlink_sim import start_mavlink_receive_thread
 import time
 import genesis as gs
 
@@ -15,10 +16,6 @@ def main():
     gs.init()
     with open("config/env.yaml", "r") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
-
-    # entity = self.scene.add_entity(gs.morphs.Drone(file="urdf/drones/cf2x.urdf"))
-    # 需要是如上格式
-
 
     imu = IMU_sim(
         env_num = config.get("num_env", 1),
@@ -39,18 +36,15 @@ def main():
         num_envs = config.get("num_env", 1),
         yaml_path = "config/env.yaml",
         controller = pid,
-        entity = gs.morphs.Drone(file="urdf/drones/cf2x.urdf"),
+        entity = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.5)),
         device = torch.device("cuda")
     )
 
     imu.set_entity(test_env.get_entity())
     pid.set_entity(test_env.get_entity())
-
+    start_mavlink_receive_thread()
     while True:
-        print(time.time())
         test_env.sim_step()
-
-
 
 if __name__ == "__main__" :
     main()
