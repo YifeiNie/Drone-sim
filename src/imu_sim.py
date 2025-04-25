@@ -40,7 +40,7 @@ class IMU_sim:
         # attitude estimate freq = 100Hz / imu_process_denom
         # pid_process_denom can found by "get pid_process_denom" in cli in Betaflight configrator
         # imu_process_denom can found by "get imu_process_denom" in cli in Betaflight configrator
-
+        
         self.gyro_update_freq = config.get("gyro_update_freq", 8000)   # default are the same as Betaflight, aborted!
         self.acc_update_freq = config.get("acc_update_freq", 1000)  
         self.att_update_freq = config.get("att_update_freq", 100)

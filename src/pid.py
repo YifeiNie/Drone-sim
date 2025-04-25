@@ -6,7 +6,7 @@ import argparse
 import genesis as gs
 import time
 import threading
-from mavlink import rc_command
+from .mavlink_sim import rc_command
 
 
 class PIDcontroller:
@@ -57,7 +57,8 @@ class PIDcontroller:
         M2 = self.base_rpm + (thrust - roll + pitch + yaw)
         M3 = self.base_rpm + (thrust + roll + pitch - yaw)
         M4 = self.base_rpm + (thrust + roll - pitch + yaw)
-        return torch.Tensor([M1, M2, M3, M4])
+        throttle = self.rc_command["throttle"] * self.base_rpm
+        return torch.Tensor([M1, M2, M3, M4]) + throttle
 
     def pid_update_TpaFactor(self):
         if (rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
