@@ -30,9 +30,9 @@ rc_data = {
 }
 
 rc_command = {
-    "yaw": 0.0,
-    "pitch": 0.0,
     "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": 0.0,
     "throttle": 0.0,
     "ANGLE": 1,          # 0: angel, 1: angle_rate, 2: not defined
     "ARM": 0,            # 0: disarmed, 1: armed
@@ -91,8 +91,8 @@ def start_mavlink_receive_thread():
     t = threading.Thread(target=mavlink_receive_thread, args=(rc_config["USB_path"], rc_config["baudrate"], rc_config), daemon=True)
     t.start()
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     start_mavlink_receive_thread()
-#     while True:
-#         time.sleep(0.1)
+    start_mavlink_receive_thread()
+    while True:
+        time.sleep(0.1)

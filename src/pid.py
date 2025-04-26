@@ -57,7 +57,7 @@ class PIDcontroller:
         self.drone = entity
 
     def mixer(self) -> torch.Tensor:
-        throttle = (self.rc_command["throttle"] - 0.5) * 1000 
+        throttle = (self.rc_command["throttle"] - 0.5) * 1200 
 
         # if (throttle < 0.9 * self.base_rpm):
         #     return torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float)
@@ -66,8 +66,8 @@ class PIDcontroller:
         motor_outputs = torch.stack([
             -self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
             -self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
-             self.pid_output[:, 0] + self.pid_output[:, 1] - self.pid_output[:, 2],  # M3
-             self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
+            +self.pid_output[:, 0] + self.pid_output[:, 1] - self.pid_output[:, 2],  # M3
+            +self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
         return motor_outputs + throttle + self.base_rpm
@@ -104,7 +104,7 @@ class PIDcontroller:
         self.D_term[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd * self.tpa_factor    
         # TODO feedforward term 
         self.last_body_ang_vel[:] = self.imu.body_ang_vel
-        self.pid_output[:] = (self.P_term + self.I_term + self.D_term) * 100
+        self.pid_output[:] = (self.P_term + self.I_term + self.D_term)
         # print(self.pid_output)
 
     def angle_controller(self):  

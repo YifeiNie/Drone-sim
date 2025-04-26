@@ -14,7 +14,7 @@ kd_y: 0.2
 kf_y: 0.0
 
 pid_exec_freq: 60
-base_rpm: 14468.429183500699
+base_rpm: 14668.429183500699
 
 # unit is grams
 weight: 500.0     
