@@ -79,7 +79,7 @@ def mavlink_receive_thread(device="/dev/ttyUSB0", baudrate=2000000, rc_config=No
                     rc_command["ARM"] = 1 if temp_arm > 1400 else 0          
                     rc_command["OFFBOARD"] = 0 if temp_offboard < 1400 else 1     
 
-                    print("RC Command:", rc_command)
+                    # print("RC Command:", rc_command)
 
         except KeyboardInterrupt:
             print("Exiting...")

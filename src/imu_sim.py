@@ -91,7 +91,7 @@ class IMU_sim:
 
 
     def att_update(self):
-        self.body_euler[:] = quat_to_xyz(self.body_quat)
+        self.body_euler[:] = quat_to_xyz(self.body_quat, rpy=True)
 
     # a simple scheduler to sim Betaflight
     def imu_sim_loop(self):

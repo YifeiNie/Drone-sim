@@ -36,7 +36,7 @@ def main():
         num_envs = config.get("num_env", 1),
         yaml_path = "config/env.yaml",
         controller = pid,
-        entity = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.1)),
+        entity = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.5)),
         device = torch.device("cuda")
     )
 

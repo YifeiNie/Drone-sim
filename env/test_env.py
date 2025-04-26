@@ -36,13 +36,15 @@ class Test_env :
             ),
             show_viewer = True,
         )
-
+        
         # add plane (ground)
         self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        self.entity = entity
         self.entity = self.scene.add_entity(entity)
+
+        # follow drone
+        self.scene.viewer.follow_entity(self.entity)
 
         self.scene.build(n_envs = num_envs)
 
