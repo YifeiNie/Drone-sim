@@ -57,16 +57,21 @@ class PIDcontroller:
         self.drone = entity
 
     def mixer(self) -> torch.Tensor:
-        M1 = self.base_rpm + (thrust - roll - pitch - yaw)
-        M2 = self.base_rpm + (thrust - roll + pitch + yaw)
-        M3 = self.base_rpm + (thrust + roll + pitch - yaw)
-        M4 = self.base_rpm + (thrust + roll - pitch + yaw)
-        # M1 = self.base_rpm
-        # M2 = self.base_rpm
-        # M3 = self.base_rpm
-        # M4 = self.base_rpm
-        throttle = self.rc_command["throttle"] * 1000
-        return torch.tensor([M1, M2, M3, M4], device = self.device) + throttle
+        throttle = (self.rc_command["throttle"] - 0.5) * 1000 
+
+        # if (throttle < 0.9 * self.base_rpm):
+        #     return torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float)
+        
+
+        motor_outputs = torch.stack([
+            -self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
+            -self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
+             self.pid_output[:, 0] + self.pid_output[:, 1] - self.pid_output[:, 2],  # M3
+             self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
+        ], dim = 1)
+
+        return motor_outputs + throttle + self.base_rpm
+
 
     def pid_update_TpaFactor(self):
         if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
@@ -87,9 +92,8 @@ class PIDcontroller:
         else:                                     # undifined
             print("undifined mode, do nothing!!")
             return
-        [M1, M2, M3, M4] = self.mixer()
-        print([M1, M2, M3, M4])
-        self.drone.set_propellels_rpm([[M1, M2, M3, M4]])
+        # print([M1, M2, M3, M4])
+        self.drone.set_propellels_rpm(self.mixer())
 
 
     def angle_rate_controller(self):  # use previous-D-term PID controller
@@ -100,8 +104,8 @@ class PIDcontroller:
         self.D_term[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd * self.tpa_factor    
         # TODO feedforward term 
         self.last_body_ang_vel[:] = self.imu.body_ang_vel
-        self.pid_output[:] = self.P_term + self.I_term + self.D_term
-    
+        self.pid_output[:] = (self.P_term + self.I_term + self.D_term) * 100
+        # print(self.pid_output)
 
     def angle_controller(self):  
         print("do nothing") 
