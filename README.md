@@ -5,7 +5,7 @@
 - use Type-c to power the FCU, and connect UART port (on FUC) and USB port (on PC) through USB2TTL module, like:
 - <img src="./doc/1.png"  width="300" /> <br>
 - connect the FC and use mavlink to send FC_data from FCU to PC
-- use ls /dev/tty* to check the port id and modified `./config/mavlink_param.yaml` USB_path
+- use ls /dev/tty* to check the port id and modified param `USB_path` in `./config/mavlink_param.yaml`
 
 ### Run demo
 - make sure your PC has one GPU at least
