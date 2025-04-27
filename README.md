@@ -14,3 +14,6 @@
 - connect the FC and use mavlink to send FC_data from FCU to PC
 - run demo by `python main.py`
 - use FC to control the sim drone
+
+### Note
+- for the urdf file, see `./urdf` 
