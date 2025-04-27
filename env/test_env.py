@@ -3,27 +3,32 @@ import math
 import time
 import yaml
 import genesis as gs
-from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
+from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
+import numpy as np
+
 
 class Test_env :
-    def __init__(self, num_envs, yaml_path, controller, entity, device = torch.device("cuda")):
+    def __init__(self, env_num, yaml_path, controller, imu_sim, entity, device = torch.device("cuda")):
 
         with open(yaml_path, "r") as file:
             config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
 
-        self.num_envs = num_envs
-        self.rendered_env_num = min(10, self.num_envs)
+        self.env_num = env_num
+        self.rendered_env_num = min(10, self.env_num)
 
         self.dt = config.get("dt", 0.01)   # default sim env update in 100hz
+        self.imu_sim = imu_sim
         self.controller = controller
+
+        self.cam_quat = torch.tensor([0.462, 0.536, -0.536, -0.462], device=self.device, dtype=gs.tc_float).expand(env_num, -1)
 
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
             viewer_options = gs.options.ViewerOptions(
                 max_FPS = config.get("max_vis_FPS", 60),
-                camera_pos = (3.0, 0.0, 3.0),
+                camera_pos = (-3.0, 0.0, 3.0),
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
             ),
@@ -45,13 +50,30 @@ class Test_env :
 
         # follow drone
         self.scene.viewer.follow_entity(self.entity)
+        if (config.get("use_FPV_camera", False)):
+            self.cam = self.scene.add_camera(
+                res=(640, 480),
+                pos=(-3.5, 0.0, 2.5),
+                lookat=(0, 0, 0.5),
+                fov=30,
+                GUI=True,
+            )
+        self.scene.build(n_envs = env_num)
 
-        self.scene.build(n_envs = num_envs)
 
+    def set_FPV_cam_pos(self):
+        self.cam.set_pose(
+            transform = trans_quat_to_T(trans = self.entity.get_pos(), 
+                                        quat = transform_quat_by_quat(self.cam_quat, self.imu_sim.body_quat))[0].cpu().numpy()
+            # lookat = (0, 0, 0.5)
+        )
 
     def sim_step(self): 
         self.scene.step()
+        self.set_FPV_cam_pos()
+        self.cam.render()
         self.controller.controller_step()      # pid controller
 
     def get_entity(self) :
         return self.entity
+    

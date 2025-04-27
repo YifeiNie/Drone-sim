@@ -18,14 +18,14 @@ def main():
         config = yaml.load(file, Loader=yaml.FullLoader)
 
     imu = IMU_sim(
-        env_num = config.get("num_env", 1),
+        env_num = config.get("env_num", 1),
         entity = None,
         yaml_path = "config/imu_sim_param.yaml",
         device = torch.device("cuda")
     )
 
     pid = PIDcontroller(
-        env_num = config.get("num_env", 1), 
+        env_num = config.get("env_num", 1), 
         rc_command = rc_command,
         imu_sim = imu, 
         yaml_path = "config/pid_param.yaml",
@@ -33,9 +33,10 @@ def main():
     )
 
     test_env = Test_env(
-        num_envs = config.get("num_env", 1),
+        env_num = config.get("env_num", 1),
         yaml_path = "config/env.yaml",
         controller = pid,
+        imu_sim = imu,
         entity = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0)),
         device = torch.device("cuda")
     )

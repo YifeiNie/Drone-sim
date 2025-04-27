@@ -102,7 +102,7 @@ class PIDcontroller:
 
     def angle_rate_controller(self):  # use previous-D-term PID controller
         self.body_set_point[:] = torch.tensor(list(self.rc_command.values())[:3]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = self.body_set_point - self.imu.body_ang_vel
+        cur_angle_rate_error = self.body_set_point * 10 - self.imu.body_ang_vel
         self.P_term[:] = (cur_angle_rate_error * self.kp) * self.tpa_factor
         self.I_term[:] = self.I_term + cur_angle_rate_error * self.ki
         self.D_term[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd * self.tpa_factor    
@@ -113,7 +113,7 @@ class PIDcontroller:
 
     def angle_controller(self):  
         self.body_set_point[:] = -self.imu.body_euler + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = (self.body_set_point*10 - self.imu.body_ang_vel)
+        cur_angle_rate_error = (self.body_set_point * 10 - self.imu.body_ang_vel)
         self.P_term[:] = (cur_angle_rate_error * self.kp) * self.tpa_factor
         self.I_term[:] = self.I_term + cur_angle_rate_error * self.ki
         self.D_term[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd * self.tpa_factor    
