@@ -20,8 +20,8 @@ class Test_env :
         self.dt = config.get("dt", 0.01)   # default sim env update in 100hz
         self.imu_sim = imu_sim
         self.controller = controller
-
-        self.cam_quat = torch.tensor([0.462, 0.536, -0.536, -0.462], device=self.device, dtype=gs.tc_float).expand(env_num, -1)
+        
+        self.cam_quat = torch.tensor(config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(env_num, -1)
 
         # create scene
         self.scene = gs.Scene(
