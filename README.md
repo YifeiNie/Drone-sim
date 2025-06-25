@@ -18,3 +18,6 @@
 
 ### Note
 - for the urdf file, see `./urdf` 
+
+### Ref
+- [gazebo-vegetation](https://github.com/kubja/gazebo-vegetation)
