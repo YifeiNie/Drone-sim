@@ -42,6 +42,20 @@ class Test_env :
             show_viewer = True,
         )
         
+        self.scene.add_entity(
+            morph=gs.morphs.Mesh(
+                file="/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj",
+                pos=(0.0, 0.0, 0.0),
+                euler=(90, 0, 0),
+                scale=(1.0, 1.0, 1.0),
+                collision=True,
+                convexify=True,
+                decompose_error_threshold=0.05,
+                decimate=True,
+                fixed=True,
+            )
+        )
+
         # add plane (ground)
         self.scene.add_entity(gs.morphs.Plane())
 
@@ -49,7 +63,7 @@ class Test_env :
         self.entity = self.scene.add_entity(entity)
 
         # follow drone
-        self.scene.viewer.follow_entity(self.entity)
+        # self.scene.viewer.follow_entity(self.entity)
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
