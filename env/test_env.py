@@ -83,7 +83,7 @@ class Test_env :
     def sim_step(self): 
         self.scene.step()
         self.set_FPV_cam_pos()
-        self.cam.render()
+        self.cam.render(depth=True, segmentation=False, normal=False)
         self.controller.controller_step()      # pid controller
 
     def get_entity(self) :
