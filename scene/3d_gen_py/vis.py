@@ -29,9 +29,9 @@ def visualize_models(root_path):
                 print(f"Loading {filepath}")
                 mesh = o3d.io.read_triangle_mesh(filepath)
                 if not mesh.is_empty():
-                    print(get_obj_bbox_dims(filepath))
+                    # print(get_obj_bbox_dims(filepath))
                     o3d.visualization.draw_geometries([mesh])
 
 
 if __name__ == "__main__":
-    visualize_models("/home/nyf/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models")
+    visualize_models("/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models")
