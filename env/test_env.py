@@ -3,7 +3,7 @@ import math
 import time
 import yaml
 import genesis as gs
-from . import map_gen as map
+from . import map_gen
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
 import numpy as np
 
@@ -43,14 +43,16 @@ class Test_env :
             show_viewer = True,
         )
 
-        map.add_forest_to_scene(
-            env=self,
-            tree_file="/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj",
-            map_size=(20, 20),
-            tree_dist=1.5,
-            seed=123,
+        # creat map
+        self.map = map_gen.ForestEnv(
+            base_dir = "/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/",
+            min_tree_dis = 1.6, 
+            width = 20, 
+            length = 20
         )
 
+        # add entity in map
+        self.map.add_forest_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.scene.add_entity(gs.morphs.Plane())
