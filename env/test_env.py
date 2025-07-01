@@ -45,7 +45,7 @@ class Test_env :
 
         # creat map
         self.map = map_gen.ForestEnv(
-            base_dir = "/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/",
+            base_dir = "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/",
             min_tree_dis = 1.6, 
             width = 20, 
             length = 20
@@ -81,9 +81,10 @@ class Test_env :
         )
 
     def sim_step(self): 
+        self.scene._sim.rigid_solver.collider.detection()
         self.scene.step()
         self.set_FPV_cam_pos()
-        self.cam.render(depth=True, segmentation=False, normal=False)
+        self.cam.render(rgb=False, depth=True, segmentation=False, normal=False)
         self.controller.controller_step()      # pid controller
 
     def get_entity(self) :

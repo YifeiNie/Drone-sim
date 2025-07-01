@@ -4,11 +4,11 @@
 
 import yaml
 import torch
-from src.pid import PIDcontroller
-from src.imu_sim import IMU_sim
-from src.mavlink_sim import rc_command
+from controller.pid import PIDcontroller
+from controller.imu_sim import IMU_sim
+from controller.mavlink_sim import rc_command
 from env.test_env import Test_env
-from src.mavlink_sim import start_mavlink_receive_thread
+from controller.mavlink_sim import start_mavlink_receive_thread
 import time
 import genesis as gs
 
