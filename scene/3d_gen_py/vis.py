@@ -34,4 +34,4 @@ def visualize_models(root_path):
 
 
 if __name__ == "__main__":
-    visualize_models("/home/nyf/Genesis-Drones/controller/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models")
+    visualize_models("/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models")
