@@ -40,7 +40,7 @@ class Test_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = False,
+            show_viewer = True,
         )
 
         # creat map
@@ -57,11 +57,11 @@ class Test_env :
         self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        self.entity = self.scene.add_entity(entity)
-        setattr(self.entity, 'max_dis_num', np.zeros(config.get("max_dis_num", 5)))     # restore distance list
+        self.drone = self.scene.add_entity(entity)
+        setattr(self.drone, 'max_dis_num', np.zeros(config.get("max_dis_num", 5)))     # restore distance list
 
         # follow drone
-        # self.scene.viewer.follow_entity(self.entity)
+        # self.scene.viewer.follow_entity(self.drone)
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
@@ -71,22 +71,23 @@ class Test_env :
                 GUI=False,
             )
         self.scene.build(n_envs = env_num)
-        print(len(self.map.tree_entity_list))
-        self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], np.zeros(3))
 
     def set_FPV_cam_pos(self):
         self.cam.set_pose(
-            transform = trans_quat_to_T(trans = self.entity.get_pos(), 
+            transform = trans_quat_to_T(trans = self.drone.get_pos(), 
                                         quat = transform_quat_by_quat(self.cam_quat, self.imu_sim.body_quat))[0].cpu().numpy()
             # lookat = (0, 0, 0.5)
         )
         
     def sim_step(self): 
+        print(f"drone pos is {self.drone.get_pos()}")
+        print(f"tree pos is {self.map.tree_entity_list[0].get_pos()}")
+        print(f"dis is {self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], self.drone.get_pos())}")
         self.scene.step()
         self.set_FPV_cam_pos()
         self.cam.render(rgb=False, depth=True, segmentation=False, normal=False)
         self.controller.controller_step()      # pid controller
 
     def get_entity(self) :
-        return self.entity
+        return self.drone
     

@@ -3,7 +3,7 @@ import math
 import genesis as gs
 import numpy as np
 from genesis.options import morphs
-
+import torch as th
 
 class ForestEnv:
     def __init__(self, min_tree_dis, width, length):
@@ -79,13 +79,13 @@ class ForestEnv:
                     file=tree_file,
                     pos=(x, y, 0.0),
                     euler=(
-                        90 + math.degrees(roll),  # 强制正立
-                        math.degrees(pitch),
-                        math.degrees(yaw)
+                        90 + math.degrees(0),  # 强制正立
+                        math.degrees(0),
+                        math.degrees(0)
                     ),
                     scale=(scale, scale, scale),
                     collision=True,
-                    convexify=False,
+                    convexify=True,
                     decimate=False,
                     requires_jac_and_IK=False,
                     fixed=True,
@@ -98,19 +98,17 @@ class ForestEnv:
 
             self.tree_entity_list.append(entity)
 
-    def get_min_dis_from_entity(self, entity, point):
+    def get_min_dis_from_entity(self, entity, pos):
         if len(entity.links) == 0:
             raise ValueError("Entity has no links.")
             
-        # 检查第一个 link 是否包含任何 geoms
         if len(entity.links[0].geoms) == 0:
             raise ValueError("First link has no geoms.")
 
-        # 如果通过检查，继续访问 geoms
         collision_geom = entity.links[0].geoms[0]
 
-        # 计算距离
-        sdf_value = collision_geom.sdf_world(point)
+        sdf_value = collision_geom.sdf_world(pos_world=pos)
+        print(f"sdf_res is {collision_geom.sdf_res}")
         return sdf_value
 
     def get_tree_num(self):
