@@ -69,7 +69,7 @@ class ForestEnv:
 
         for x, y in positions:
             tree_file = self.pick()
-            scale = random.uniform(0.7, 1.5)
+            scale = random.uniform(0.7, 1.3)
             roll = math.radians(random.uniform(0, 10))
             pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
@@ -79,11 +79,11 @@ class ForestEnv:
                     file=tree_file,
                     pos=(x, y, 0.0),
                     euler=(
-                        90 + math.degrees(0),  # 强制正立
-                        math.degrees(0),
-                        math.degrees(0)
+                        90 + math.degrees(roll),  # roll
+                        math.degrees(pitch),      # pitch  
+                        math.degrees(yaw)         # yaw
                     ),
-                    scale=(1, 1, 1),
+                    scale=(scale, scale, scale),
                     collision=True,
                     convexify=True,
                     decimate=False,
