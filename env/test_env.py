@@ -2,11 +2,11 @@ import torch
 import math
 import time
 import yaml
+# import taichi as ti
 import genesis as gs
-from . import map_gen
+from . import map
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
 import numpy as np
-
 
 class Test_env :
     def __init__(self, env_num, yaml_path, controller, imu_sim, entity, device = torch.device("cuda")):
@@ -40,25 +40,25 @@ class Test_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = True,
+            show_viewer = False,
         )
 
         # creat map
-        self.map = map_gen.ForestEnv(
-            base_dir = "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/",
+        self.map = map.ForestEnv(
             min_tree_dis = 1.6, 
-            width = 20, 
-            length = 20
+            width = 3, 
+            length = 3
         )
 
         # add entity in map
-        self.map.add_forest_to_scene(scene = self.scene)
+        self.map.add_trees_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
         self.entity = self.scene.add_entity(entity)
+        setattr(self.entity, 'max_dis_num', np.zeros(config.get("max_dis_num", 5)))     # restore distance list
 
         # follow drone
         # self.scene.viewer.follow_entity(self.entity)
@@ -68,10 +68,11 @@ class Test_env :
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=30,
-                GUI=True,
+                GUI=False,
             )
         self.scene.build(n_envs = env_num)
-
+        print(len(self.map.tree_entity_list))
+        self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], np.zeros(3))
 
     def set_FPV_cam_pos(self):
         self.cam.set_pose(
@@ -79,9 +80,8 @@ class Test_env :
                                         quat = transform_quat_by_quat(self.cam_quat, self.imu_sim.body_quat))[0].cpu().numpy()
             # lookat = (0, 0, 0.5)
         )
-
+        
     def sim_step(self): 
-        self.scene._sim.rigid_solver.collider.detection()
         self.scene.step()
         self.set_FPV_cam_pos()
         self.cam.render(rgb=False, depth=True, segmentation=False, normal=False)

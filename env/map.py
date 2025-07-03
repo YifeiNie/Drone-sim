@@ -6,16 +6,15 @@ from genesis.options import morphs
 
 
 class ForestEnv:
-    def __init__(self, min_tree_dis, width, length, base_dir):
+    def __init__(self, min_tree_dis, width, length):
 
-        
-        self.strings = ["tree_1/meshes/tree_1.obj", "tree_7/meshes/tree_7.obj"]
+        self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
+                        "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
         self.weights = [0.65, 0.35]
 
         if len(self.strings) != len(self.weights):
             raise ValueError("The length of the string list and weight list is inconsistent")
         
-        self.base_dir = base_dir
         self.width = width
         self.length = length
         self.min_tree_dis = min_tree_dis
@@ -23,6 +22,7 @@ class ForestEnv:
         self.grid_width = int(self.width / self.cell_size) + 1
         self.grid_length = int(self.length / self.cell_size) + 1
         self.grid = [[None for _ in range(self.grid_length)] for _ in range(self.grid_width)]
+        self.tree_entity_list = []
 
     def pick(self):
         return random.choices(self.strings, weights=self.weights, k=1)[0]
@@ -62,20 +62,19 @@ class ForestEnv:
 
         return points
 
-
-    def add_forest_to_scene(self, scene):
+    def add_trees_to_scene(self, scene):
         
         random.random()
         positions = self.generate_poisson_points()
 
         for x, y in positions:
-            tree_file = self.base_dir + self.pick()
+            tree_file = self.pick()
             scale = random.uniform(0.7, 1.5)
             roll = math.radians(random.uniform(0, 10))
             pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
 
-            scene.add_entity(
+            entity = scene.add_entity(
                 morph=morphs.Mesh(
                     file=tree_file,
                     pos=(x, y, 0.0),
@@ -85,14 +84,34 @@ class ForestEnv:
                         math.degrees(yaw)
                     ),
                     scale=(scale, scale, scale),
-                    collision=False,
+                    collision=True,
                     convexify=False,
                     decimate=False,
                     requires_jac_and_IK=False,
                     fixed=True,
                     parse_glb_with_trimesh=False,
-                    merge_submeshes_for_collision=False,
+                    merge_submeshes_for_collision=True,
                     group_by_material=False,
                     visualization=True
                 )
             )
+
+            self.tree_entity_list.append(entity)
+
+    def get_min_dis_from_entity(self, entity, point):
+        if len(entity.links) == 0:
+            raise ValueError("Entity has no links.")
+            
+        # 检查第一个 link 是否包含任何 geoms
+        if len(entity.links[0].geoms) == 0:
+            raise ValueError("First link has no geoms.")
+
+        # 如果通过检查，继续访问 geoms
+        collision_geom = entity.links[0].geoms[0]
+
+        # 计算距离
+        sdf_value = collision_geom.sdf_world(point)
+        return sdf_value
+
+    def get_tree_num(self):
+        return len(self.tree_entity_list)
