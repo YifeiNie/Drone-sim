@@ -22,7 +22,7 @@ class ForestEnv:
         self.grid_width = int(self.width / self.cell_size) + 1
         self.grid_length = int(self.length / self.cell_size) + 1
         self.grid = [[None for _ in range(self.grid_length)] for _ in range(self.grid_width)]
-        self.tree_entity_list = []
+        self.tree_entity_list = {}
 
     def pick(self):
         return random.choices(self.strings, weights=self.weights, k=1)[0]
@@ -96,7 +96,7 @@ class ForestEnv:
                 )
             )
 
-            self.tree_entity_list.append(entity)
+            self.tree_entity_list[entity.idx] = entity
 
     def get_min_dis_from_entity(self, entity, pos):
         if len(entity.links) == 0:
@@ -108,7 +108,6 @@ class ForestEnv:
         collision_geom = entity.links[0].geoms[0]
 
         sdf_value = collision_geom.sdf_world(pos_world=pos, recompute=True)
-        print(f"sdf_res is {collision_geom.sdf_res}")
         return sdf_value
 
     def get_tree_num(self):
