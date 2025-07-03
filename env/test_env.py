@@ -4,6 +4,7 @@ import time
 import yaml
 # import taichi as ti
 import genesis as gs
+from utils.heapq import EntityList
 from . import map
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
 import numpy as np
@@ -58,17 +59,17 @@ class Test_env :
 
         # add drone
         self.drone = self.scene.add_entity(entity)
-        setattr(self.drone, 'max_dis_num', np.zeros(config.get("max_dis_num", 5)))     # restore distance list
+        setattr(self.drone, 'entity_dis_list', EntityList(max_size=config.get("max_dis_num", 5)))     # restore distance list with entity
 
         # follow drone
-        # self.scene.viewer.follow_entity(self.drone)
+        self.scene.viewer.follow_entity(self.drone)
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=30,
-                GUI=False,
+                GUI=True,
             )
         self.scene.build(n_envs = env_num)
 
@@ -78,14 +79,24 @@ class Test_env :
                                         quat = transform_quat_by_quat(self.cam_quat, self.imu_sim.body_quat))[0].cpu().numpy()
             # lookat = (0, 0, 0.5)
         )
-        
+    
+    def update_entity_dis_list(self):
+        cur_pos = self.drone.get_pos()
+        for key, value in self.map.tree_entity_list.items():
+            min_dis = self.map.get_min_dis_from_entity(value, cur_pos)
+            self.drone.entity_dis_list.update(key, min_dis)
+
     def sim_step(self): 
-        print(f"drone pos is {self.drone.get_pos()}")
-        print(f"tree pos is {self.map.tree_entity_list[0].get_pos()}")
-        print(f"dis is {self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], self.drone.get_pos())}")
+        # print(f"drone pos is {self.drone.get_pos()}")
+        # print(f"tree pos is {self.map.tree_entity_list[0].get_pos()}")
+        # print(f"dis is {self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], self.drone.get_pos())}")
         self.scene.step()
+
+        self.update_entity_dis_list()
+        self.drone.entity_dis_list.print()
+
         self.set_FPV_cam_pos()
-        self.cam.render(rgb=False, depth=True, segmentation=False, normal=False)
+        self.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
         self.controller.controller_step()      # pid controller
 
     def get_entity(self) :
