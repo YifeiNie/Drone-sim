@@ -83,7 +83,7 @@ class ForestEnv:
                         math.degrees(0),
                         math.degrees(0)
                     ),
-                    scale=(scale, scale, scale),
+                    scale=(1, 1, 1),
                     collision=True,
                     convexify=True,
                     decimate=False,
@@ -107,7 +107,7 @@ class ForestEnv:
 
         collision_geom = entity.links[0].geoms[0]
 
-        sdf_value = collision_geom.sdf_world(pos_world=pos)
+        sdf_value = collision_geom.sdf_world(pos_world=pos, recompute=True)
         print(f"sdf_res is {collision_geom.sdf_res}")
         return sdf_value
 
