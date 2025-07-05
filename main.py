@@ -4,11 +4,11 @@
 
 import yaml
 import torch
-from controller.pid import PIDcontroller
-from controller.imu_sim import IMU_sim
-from controller.mavlink_sim import rc_command
+from flight.pid import PIDcontroller
+from flight.imu_sim import IMU_sim
+from flight.mavlink_sim import rc_command
 from env.test_env import Test_env
-from controller.mavlink_sim import start_mavlink_receive_thread
+from flight.mavlink_sim import start_mavlink_receive_thread
 import time
 import genesis as gs
 
@@ -41,8 +41,8 @@ def main():
         device = torch.device("cuda")
     )
 
-    imu.set_entity(test_env.get_entity())
-    pid.set_entity(test_env.get_entity())
+    imu.get_drone(test_env.get_drone())
+    pid.set_drone(test_env.get_drone())
     start_mavlink_receive_thread()
     while True:
         test_env.sim_step()

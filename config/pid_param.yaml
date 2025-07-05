@@ -1,17 +1,51 @@
-kp_r: 4500.0
-ki_r: 0.0
-kd_r: 0.0
-kf_r: 0.0
 
-kp_p: 4500.0
-ki_p: 0.0
-kd_p: 0.0
-kf_p: 0.0
+ang:
+  kp_r: 4500.0
+  ki_r: 0.0
+  kd_r: 0.0
+  kf_r: 0.0
 
-kp_y: 2000.0
-ki_y: 0.0
-kd_y: 0.2
-kf_y: 0.0
+  kp_p: 4500.0
+  ki_p: 0.0
+  kd_p: 0.0
+  kf_p: 0.0
+
+  kp_y: 2000.0
+  ki_y: 0.0
+  kd_y: 0.2
+  kf_y: 0.0
+
+rat:
+  kp_r: 4500.0
+  ki_r: 0.0
+  kd_r: 0.0
+  kf_r: 0.0
+
+  kp_p: 4500.0
+  ki_p: 0.0
+  kd_p: 0.0
+  kf_p: 0.0
+
+  kp_y: 2000.0
+  ki_y: 0.0
+  kd_y: 0.2
+  kf_y: 0.0
+
+pos:
+  kp_x: 4500.0
+  ki_x: 0.0
+  kd_x: 0.0
+  kf_x: 0.0
+
+  kp_y: 4500.0
+  ki_y: 0.0
+  kd_y: 0.0
+  kf_y: 0.0
+
+  kp_t: 2000.0
+  ki_t: 0.0
+  kd_t: 0.2
+  kf_t: 0.0
 
 pid_exec_freq: 60
 base_rpm: 70000.0

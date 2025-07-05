@@ -62,7 +62,7 @@ class Test_env :
         setattr(self.drone, 'entity_dis_list', EntityList(max_size=config.get("max_dis_num", 5)))     # restore distance list with entity
 
         # follow drone
-        self.scene.viewer.follow_entity(self.drone)
+        # self.scene.viewer.follow_entity(self.drone)
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
@@ -99,6 +99,6 @@ class Test_env :
         self.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
         self.controller.controller_step()      # pid controller
 
-    def get_entity(self) :
+    def get_drone(self) :
         return self.drone
     
