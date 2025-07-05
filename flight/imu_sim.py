@@ -11,7 +11,7 @@ class IMU_sim:
         with open(yaml_path, "r") as file:
             config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
-        self.entity = entity
+        self.drone = entity
         self.env_num = env_num
         
         # self.last_body_pos = torch.zeros_like(self.body_pos)
@@ -67,22 +67,22 @@ class IMU_sim:
             }
         }
 
-    def set_entity(self, entity):
-        self.entity = entity
+    def get_drone(self, drone):
+        self.drone = drone
 
     def cal_cur_quat(self):
-        self.body_quat[:] = self.entity.get_quat()
+        self.body_quat[:] = self.drone.get_quat()
         self.body_quat_inv[:] = inv_quat(self.body_quat)
 
     def gyro_update(self):
         self.cal_cur_quat()    # since gyro_update has the highest freq
-        cur_ang_vel = self.entity.get_ang()
+        cur_ang_vel = self.drone.get_ang()
         self.body_ang_vel[:] = cur_ang_vel
         self.world_ang_vel[:] = transform_by_quat(cur_ang_vel, self.body_quat_inv)
 
     def acc_update(self, dT):
         self.last_body_linear_vel[:] = self.body_linear_vel
-        body_linear_vel_temp = self.entity.get_vel()
+        body_linear_vel_temp = self.drone.get_vel()
         self.body_linear_vel[:] = body_linear_vel_temp
         self.world_linear_vel[:] = transform_by_quat(body_linear_vel_temp, self.body_quat_inv)
 
