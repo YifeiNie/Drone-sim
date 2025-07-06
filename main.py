@@ -17,31 +17,29 @@ def main():
     with open("config/env.yaml", "r") as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
 
-    imu = IMU_sim(
-        env_num = config.get("env_num", 1),
-        yaml_path = "config/imu_sim_param.yaml",
-        device = torch.device("cuda")
-    )
+    # imu = IMU_sim(
+    #     env_num = config.get("env_num", 1),
+    #     yaml_path = "config/imu_sim_param.yaml",
+    #     device = torch.device("cuda")
+    # )
 
-    pid = PIDcontroller(
-        env_num = config.get("env_num", 1), 
-        rc_command = rc_command,
-        imu_sim = imu, 
-        yaml_path = "config/pid_param.yaml",
-        device = torch.device("cuda")
-    )
+    # pid = PIDcontroller(
+    #     env_num = config.get("env_num", 1), 
+    #     rc_command = rc_command,
+    #     imu_sim = imu, 
+    #     yaml_path = "config/pid_param.yaml",
+    #     device = torch.device("cuda")
+    # )
 
     test_env = Test_env(
         env_num = config.get("env_num", 1),
         yaml_path = "config/env.yaml",
-        controller = pid,
-        imu_sim = imu,
-        entity = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0)),
+        drone = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0)),
         device = torch.device("cuda")
     )
 
-    imu.get_drone(test_env.get_drone())
-    pid.set_drone(test_env.get_drone())
+    # imu.set_drone(test_env.get_drone())
+    # pid.set_drone(test_env.get_drone())
     start_mavlink_receive_thread()
     while True:
         test_env.sim_step()
