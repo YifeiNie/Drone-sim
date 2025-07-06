@@ -19,7 +19,6 @@ def main():
 
     imu = IMU_sim(
         env_num = config.get("env_num", 1),
-        entity = None,
         yaml_path = "config/imu_sim_param.yaml",
         device = torch.device("cuda")
     )

@@ -4,7 +4,7 @@ import time
 import yaml
 # import taichi as ti
 import genesis as gs
-from utils.heapq import EntityList
+from utils.heapq import MultiEntityList
 from . import map
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
 import numpy as np
@@ -59,10 +59,10 @@ class Test_env :
 
         # add drone
         self.drone = self.scene.add_entity(entity)
-        setattr(self.drone, 'entity_dis_list', EntityList(max_size=config.get("max_dis_num", 5)))     # restore distance list with entity
+        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=config.get("max_dis_num", 5), env_num=self.env_num))     # restore distance list with entity
 
-        # follow drone
-        # self.scene.viewer.follow_entity(self.drone)
+        # add camera 
+        # self.scene.viewer.follow_entity(self.drone)  follow drone
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
@@ -82,8 +82,8 @@ class Test_env :
     
     def update_entity_dis_list(self):
         cur_pos = self.drone.get_pos()
-        for key, value in self.map.tree_entity_list.items():
-            min_dis = self.map.get_min_dis_from_entity(value, cur_pos)
+        for key, tree in self.map.tree_entity_list.items():
+            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
             self.drone.entity_dis_list.update(key, min_dis)
 
     def sim_step(self): 

@@ -97,7 +97,7 @@ class PIDcontroller:
             throttle + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
-        return torch.clamp(motor_outputs, min=1, max=self.base_rpm * 5)  # size: tensor(drone_num, 4)
+        return torch.clamp(motor_outputs, min=1, max=self.base_rpm * 5)  # size: tensor(env_num, 4)
 
     def pid_update_TpaFactor(self):
         if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
