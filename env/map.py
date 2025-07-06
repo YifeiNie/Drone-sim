@@ -99,6 +99,7 @@ class ForestEnv:
             self.tree_entity_list[entity.idx] = entity
 
     def get_min_dis_from_entity(self, entity, pos):
+        # return: 1d-numpy or 0d numpy with env_num == 1
         if len(entity.links) == 0:
             raise ValueError("Entity has no links.")
             

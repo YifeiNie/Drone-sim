@@ -7,11 +7,11 @@ from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transfo
 
 # NOTE :IMU is not an odomtry, only has anglear_velocity and linear_accerleration
 class IMU_sim:
-    def __init__(self, entity, env_num, yaml_path, device = torch.device("cuda")):
+    def __init__(self, env_num, yaml_path, device = torch.device("cuda")):
         with open(yaml_path, "r") as file:
             config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
-        self.drone = entity
+        self.drone = None
         self.env_num = env_num
         
         # self.last_body_pos = torch.zeros_like(self.body_pos)
