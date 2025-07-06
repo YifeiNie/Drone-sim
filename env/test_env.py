@@ -85,7 +85,7 @@ class Test_env :
         setattr(self.drone, 'controller', pid)  
         
         # add camera 
-        # self.scene.viewer.follow_entity(self.drone)  follow drone
+        self.scene.viewer.follow_entity(self.drone)  # follow drone
         if (config.get("use_FPV_camera", False)):
             self.cam = self.scene.add_camera(
                 res=(640, 480),
