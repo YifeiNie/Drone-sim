@@ -116,7 +116,6 @@ class PIDcontroller:
             return
         self.pid_update_TpaFactor()
         if self.rc_command["ANGLE"] == 0:         # angle mode
-            print("111111111111111111111111111111")
             self.angle_controller()
         elif self.rc_command["ANGLE"] == 1:       # angle rate mode
             self.rate_controller()
