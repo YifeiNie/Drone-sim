@@ -67,7 +67,7 @@ class IMU_sim:
             }
         }
 
-    def get_drone(self, drone):
+    def set_drone(self, drone):
         self.drone = drone
 
     def cal_cur_quat(self):
