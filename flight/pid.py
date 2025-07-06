@@ -116,9 +116,10 @@ class PIDcontroller:
             return
         self.pid_update_TpaFactor()
         if self.rc_command["ANGLE"] == 0:         # angle mode
+            print("111111111111111111111111111111")
             self.angle_controller()
         elif self.rc_command["ANGLE"] == 1:       # angle rate mode
-            self.angle_rate_controller()
+            self.rate_controller()
         else:                                     # undifined
             print("undifined mode, do nothing!!")
             return
@@ -126,7 +127,7 @@ class PIDcontroller:
         self.drone.set_propellels_rpm(self.mixer())
 
 
-    def rate_controller(self):  # use previous-D-term PID controller
+    def rate_controller(self, command=0):  # use previous-D-term PID controller
         command = torch.as_tensor(command, dtype=gs.tc_float)
         self.body_set_point[:] = command + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         cur_angle_rate_error = self.body_set_point * 10 - self.imu.body_ang_vel
@@ -139,7 +140,7 @@ class PIDcontroller:
         self.pid_output[:] = (self.P_term_r + self.I_term_r + self.D_term_r)
 
 
-    def angle_controller(self, command):  
+    def angle_controller(self, command=0):  
         command = torch.as_tensor(command, dtype=gs.tc_float)
         self.body_set_point[:] = -self.imu.body_euler + command
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.env_num, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
