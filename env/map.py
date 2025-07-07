@@ -86,7 +86,7 @@ class ForestEnv:
                     scale=(scale, scale, scale),
                     collision=True,
                     convexify=True,
-                    decimate=False,
+                    decimate=True,
                     requires_jac_and_IK=False,
                     fixed=True,
                     parse_glb_with_trimesh=False,
