@@ -94,16 +94,17 @@ class Test_env :
                 fov=30,
                 GUI=True,
             )
-        
         def set_FPV_cam_pos(self):
             self.cam.set_pose(
             transform = trans_quat_to_T(trans = self.get_pos(), 
                                         quat = transform_quat_by_quat(self.cam.cam_quat, self.imu.body_quat))[0].cpu().numpy() # lookat = (0, 0, 0.5)
         )
-
         setattr(cam, 'cam_quat', self.cam_quat)  
         setattr(cam, 'set_FPV_cam_pos', types.MethodType(set_FPV_cam_pos, self.drone))
+        depth: np.ndarray = None
+        setattr(cam ,'depth', depth)
         setattr(self.drone, 'cam', cam)
+
 
         # add viewer 
         self.scene.viewer.follow_entity(self.drone)  # follow drone
@@ -129,7 +130,7 @@ class Test_env :
 
         self.drone.entity_dis_list.print()
         self.drone.cam.set_FPV_cam_pos()
-        self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
+        _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
         self.drone.controller.controller_step()      # pid controller
 
     def get_drone(self) :
