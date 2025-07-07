@@ -2,6 +2,7 @@ import torch
 import math
 import time
 import yaml
+import types
 # import taichi as ti
 import genesis as gs
 from flight.pid import PIDcontroller
@@ -47,7 +48,7 @@ class Test_env :
 
         # creat map
         self.map = map.ForestEnv(
-            min_tree_dis = 1.6, 
+            min_tree_dis = 1.4, 
             width = 3, 
             length = 3
         )
@@ -83,26 +84,35 @@ class Test_env :
         )
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)  
-        
-        # add camera 
-        self.scene.viewer.follow_entity(self.drone)  # follow drone
+
+        # add camera on drone
         if (config.get("use_FPV_camera", False)):
-            self.cam = self.scene.add_camera(
+            cam = self.scene.add_camera(
                 res=(640, 480),
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=30,
                 GUI=True,
             )
+        
+        def set_FPV_cam_pos(self):
+            self.cam.set_pose(
+            transform = trans_quat_to_T(trans = self.get_pos(), 
+                                        quat = transform_quat_by_quat(self.cam.cam_quat, self.imu.body_quat))[0].cpu().numpy() # lookat = (0, 0, 0.5)
+        )
+
+        setattr(cam, 'cam_quat', self.cam_quat)  
+        setattr(cam, 'set_FPV_cam_pos', types.MethodType(set_FPV_cam_pos, self.drone))
+        setattr(self.drone, 'cam', cam)
+
+        # add viewer 
+        self.scene.viewer.follow_entity(self.drone)  # follow drone
+
+        # build world
         self.scene.build(n_envs = env_num)
 
-    def set_FPV_cam_pos(self):
-        self.cam.set_pose(
-            transform = trans_quat_to_T(trans = self.drone.get_pos(), 
-                                        quat = transform_quat_by_quat(self.cam_quat, self.drone.imu.body_quat))[0].cpu().numpy()
-            # lookat = (0, 0, 0.5)
-        )
-    
+
+
     def update_entity_dis_list(self):
         cur_pos = self.drone.get_pos()
         for key, tree in self.map.tree_entity_list.items():
@@ -116,10 +126,10 @@ class Test_env :
         self.scene.step()
 
         self.update_entity_dis_list()
-        self.drone.entity_dis_list.print()
 
-        self.set_FPV_cam_pos()
-        self.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
+        self.drone.entity_dis_list.print()
+        self.drone.cam.set_FPV_cam_pos()
+        self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
         self.drone.controller.controller_step()      # pid controller
 
     def get_drone(self) :

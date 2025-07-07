@@ -34,7 +34,7 @@ def main():
     test_env = Test_env(
         env_num = config.get("env_num", 1),
         yaml_path = "config/env.yaml",
-        drone = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0)),
+        drone = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 1.5, 0.0)),
         device = torch.device("cuda")
     )
 
