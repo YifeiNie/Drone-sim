@@ -69,7 +69,7 @@ class ForestEnv:
 
         for x, y in positions:
             tree_file = self.pick()
-            scale = random.uniform(0.7, 1.3)
+            scale = random.uniform(0.8, 1.3)
             roll = math.radians(random.uniform(0, 10))
             pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
@@ -77,7 +77,7 @@ class ForestEnv:
             entity = scene.add_entity(
                 morph=morphs.Mesh(
                     file=tree_file,
-                    pos=(x, y, 0.0),
+                    pos=(x-1.5, y-1.5, 0.0),
                     euler=(
                         90 + math.degrees(roll),  # roll
                         math.degrees(pitch),      # pitch  
@@ -89,8 +89,8 @@ class ForestEnv:
                     decimate=True,
                     requires_jac_and_IK=False,
                     fixed=True,
-                    parse_glb_with_trimesh=False,
-                    merge_submeshes_for_collision=True,
+                    parse_glb_with_trimesh=True,
+                    merge_submeshes_for_collision=False,
                     group_by_material=False,
                     visualization=True
                 )
