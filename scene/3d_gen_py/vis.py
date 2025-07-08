@@ -1,52 +1,37 @@
-import open3d as o3d
-import os
 import numpy as np
+import open3d as o3d
 
-def get_obj_bbox_dims(filepath):
-    mesh = o3d.io.read_triangle_mesh(filepath)
-    if mesh.is_empty():
-        raise ValueError("Failed to load mesh or mesh is empty.")
+def load_and_visualize_mesh(vertex_file='/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/vertices.txt', face_file='/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/faces.txt'):
+    vertices = np.loadtxt(vertex_file, dtype=np.float64)
+    faces = np.loadtxt(face_file, dtype=np.int32)
 
-    vertices = np.asarray(mesh.vertices)
-    min_bound = vertices.min(axis=0)
-    max_bound = vertices.max(axis=0)
-    size = max_bound - min_bound
+    if faces.ndim == 1:
+        faces = faces.reshape(-1, 3)
 
-    return {
-        "length (X)": size[0],
-        "width  (Y)": size[1],
-        "height (Z)": size[2],
-        "min_xyz": min_bound.tolist(),
-        "max_xyz": max_bound.tolist()
-    }
+    print("顶点数量:", len(vertices))
+    print("面片数量:", len(faces))
 
-def visualize_models(root_path):
-    for dirpath, _, filenames in os.walk(root_path):
-        for filename in filenames:
-            if filename.endswith(".obj") or filename.endswith(".dae"):
-                filepath = os.path.join(dirpath, filename)
-                print(f"Loading {filepath}")
-                mesh = o3d.io.read_triangle_mesh(filepath)
-                # mesh.triangle_uvs = o3d.utility.Vector2dVector([])
+    assert vertices.ndim == 2 and vertices.shape[1] == 3, "顶点格式应为 (N, 3)"
+    assert faces.ndim == 2 and faces.shape[1] == 3, "面片格式应为 (M, 3)"
+    assert np.all(faces >= 0), "面片索引必须非负"
+    assert faces.max() < len(vertices), "面片索引超出顶点范围"
+    assert np.all(np.isfinite(vertices)), "顶点包含非有限值"
 
-                # ======================================================================
-                vertices = np.asarray(mesh.vertices)
-                print(len(mesh.vertices))
-                # 设置阈值
-                z_threshold = 0.0 
-                filtered_vertices = vertices[vertices[:, 1] > z_threshold]
-                filtered_mesh = mesh.select_by_index(np.where(vertices[:, 2] > z_threshold)[0])
-                dec_mesh = filtered_mesh.simplify_quadric_decimation(target_number_of_triangles=5000)
-                unfiltered_mesh = mesh.select_by_index(np.where(vertices[:, 2] <= z_threshold)[0])
-                combined_mesh = dec_mesh + unfiltered_mesh
-                print(len(combined_mesh.vertices))
+    # 如果面片索引是1-based，则需减1
+    if faces.min() == 1:
+        print("检测到面片索引从1开始，自动减1")
+        faces -= 1
 
-                # ======================================================================
-                if not mesh.is_empty():
-                    print(get_obj_bbox_dims(filepath))
-                    o3d.visualization.draw_geometries([combined_mesh])
-                    
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(vertices)
+    mesh.triangles = o3d.utility.Vector3iVector(faces)
+    mesh.compute_vertex_normals()
+    mesh.paint_uniform_color([0.6, 0.7, 0.9])
 
+    # 添加坐标系
+    coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
+
+    o3d.visualization.draw_geometries([mesh, coord_frame], window_name="Mesh Viewer")
 
 if __name__ == "__main__":
-    visualize_models("/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models")
+    load_and_visualize_mesh()

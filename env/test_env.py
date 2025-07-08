@@ -63,7 +63,7 @@ class Test_env :
         self.map.add_trees_to_scene(scene = self.scene)
 
         # add plane (ground)
-        self.scene.add_entity(gs.morphs.Plane())
+        self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
         self.drone = self.scene.add_entity(drone)
@@ -112,15 +112,15 @@ class Test_env :
         setattr(self.drone, 'cam', cam)
 
         # add lidar on drone
-        self.lidar = GenesisLidar(
-            drone=self.drone,
-            scene=self.scene,
-            drone_idx=[self.drone.idx],
-            num_envs=1,
-            headless=False,
-            sensor_type=LidarType.MID360,
-            visualization_mode='spheres'
-        )
+        # self.lidar = GenesisLidar(
+        #     drone=self.drone,
+        #     scene=self.scene,
+        #     drone_idx=[self.drone.idx],
+        #     num_envs=1,
+        #     headless=False,
+        #     sensor_type=LidarType.MID360,
+        #     visualization_mode='spheres'
+        # )
 
         # lidar = Lidar(self.scene, [self.drone.idx])
         # def set_lidar_pos(self):
@@ -132,11 +132,19 @@ class Test_env :
         # setattr(self.drone, 'lidar', lidar)
 
         # add viewer 
-        self.scene.viewer.follow_entity(self.drone)  # follow drone
+        # self.scene.viewer.follow_entity(self.drone)  # follow drone
 
         # build world
         self.scene.build(n_envs = env_num)
-
+        self.lidar = GenesisLidar(
+            drone=self.drone,
+            scene=self.scene,
+            drone_idx=[self.drone.idx, self.plane.idx],
+            num_envs=1,
+            headless=False,
+            sensor_type=LidarType.MID360,
+            visualization_mode='spheres'
+        )
 
     def update_entity_dis_list(self):
         cur_pos = self.drone.get_pos()
@@ -151,6 +159,7 @@ class Test_env :
         self.scene.step()
 
         self.update_entity_dis_list()
+
         self.lidar.step()
         self.drone.entity_dis_list.print()
         self.drone.cam.set_FPV_cam_pos()

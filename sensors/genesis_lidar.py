@@ -9,7 +9,7 @@ Key features:
 3. Multiple sensor types support
 4. Clean visualization with color-coded distance information
 """
-
+import open3d as o3d
 import torch
 import numpy as np
 import genesis as gs
@@ -109,7 +109,6 @@ class GenesisLidar:
         
         # Initialize components
         self.scene = None
-        self.robot = None
         self.terrain = None
         self.obstacles = []
         self.lidar_sensor = None
@@ -130,10 +129,10 @@ class GenesisLidar:
         
         # Sensor offset parameters (similar to IsaacGym version)# 10cm forward, 30cm up
         self.sensor_offset_quat = torch.tensor([0.0, 1.0, 0.0, 0.0], device=device, dtype=torch.float32)  # No rotation offset (wxyz)
-        self.sensor_translation = torch.tensor([0., 0.0, 0.436], device=self.device)
+        self.sensor_translation = torch.tensor([0.0, 0.0, 0.436], device=self.device)
         
         # Create environment
-        self.robot = drone
+        self.robot = None
 
         self.scene = scene
         self.entity_list = [e for e in scene.entities if e.idx not in drone_idx]
@@ -150,17 +149,23 @@ class GenesisLidar:
         vert_offset = 0
 
         for entity in self.entity_list:
+            pos = entity.get_pos()
             for geom in entity.geoms:
+                if pos.ndim == 2:
+                    pos0 = pos[0].cpu().numpy()
+                else:
+                    pos0 = pos.cpu().numpy()
                 verts = np.asarray(geom.mesh.verts)
-                faces = np.asarray(geom.mesh.faces)     # index of verts, 3 verts make a triangle
-
-                all_verts.append(verts)
+                rotated_verts = verts.copy()
+                rotated_verts[:, 1], rotated_verts[:, 2] = -verts[:, 2], verts[:, 1]
+                faces = np.asarray(geom.mesh.faces)
+                rotated_verts = rotated_verts + pos0
+                all_verts.append(rotated_verts)
 
                 faces_shifted = faces + vert_offset
                 all_faces.append(faces_shifted)
 
                 vert_offset += len(verts)
-
         # self.verts = np.vstack(all_verts)  # shape: (N, 3)
         # self.faces = np.vstack(all_faces)  # shape: (M, 3)
         return np.vstack(all_verts), np.vstack(all_faces)
@@ -253,9 +258,15 @@ class GenesisLidar:
     
     def _create_lidar_env_data(self) -> dict:
         """Create environment data for LidarSensor"""
-        # Create mock mesh data - in real usage, extract from Genesis scene
 
         vertices, faces = self.update_env()
+        # vertices = np.array(vertices, dtype=np.float32)
+        # faces = np.array(faces, dtype=np.int32)
+        # 保存顶点
+        np.savetxt("vertices.txt", vertices, fmt="%.6f")  # 保存为浮点数
+
+        # 保存面片索引
+        np.savetxt("faces.txt", faces, fmt="%d")          # 保存为整数索引
         vertex_tensor = torch.tensor( 
                 vertices,
                 device=self.device,
@@ -295,7 +306,6 @@ class GenesisLidar:
         """Step simulation and update lidar"""
         # Update robot state
         self._update_robot_state()
-        self.lidar_sensor.env = self._create_lidar_env_data()
         
         # Update lidar sensor
         point_cloud, distances = None, None
