@@ -105,11 +105,14 @@ class ForestEnv:
             
         if len(entity.links[0].geoms) == 0:
             raise ValueError("First link has no geoms.")
-
-        collision_geom = entity.links[0].geoms[0]
-
-        sdf_value = collision_geom.sdf_world(pos_world=pos, recompute=True)
-        return sdf_value
+        min_sdf = None
+        for geom in entity.geoms:
+            sdf_value = geom.sdf_world(pos_world=pos, recompute=True)
+            if min_sdf is None:
+                min_sdf = sdf_value
+            else:
+                min_sdf = np.minimum(min_sdf, sdf_value)
+        return min_sdf
 
     def get_tree_num(self):
         return len(self.tree_entity_list)

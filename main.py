@@ -11,6 +11,7 @@ from env.test_env import Test_env
 from flight.mavlink_sim import start_mavlink_receive_thread
 import time
 import genesis as gs
+import warp as wp
 
 def main():
     gs.init()
@@ -45,6 +46,7 @@ def main():
         test_env.sim_step()
 
 if __name__ == "__main__" :
+    wp.config.enable_backward_log = True
     main()
 
 
