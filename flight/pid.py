@@ -111,9 +111,9 @@ class PIDcontroller:
 
     def controller_step(self):
         self.imu.imu_update()
-        if(self.rc_command["ARM"] == 0):
-            self.drone.set_propellels_rpm(torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float))
-            return
+        # if(self.rc_command["ARM"] == 0):
+        #     self.drone.set_propellels_rpm(torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float))
+        #     return
         self.pid_update_TpaFactor()
         if self.rc_command["ANGLE"] == 0:         # angle mode
             self.angle_controller()

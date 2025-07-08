@@ -7,6 +7,12 @@ import types
 import genesis as gs
 from flight.pid import PIDcontroller
 from flight.imu_sim import IMU_sim
+
+
+from sensors.genesis_lidar import GenesisLidar
+from sensors.LidarSensor.lidar_sensor import LidarSensor
+from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
+
 from flight.mavlink_sim import rc_command
 from utils.heapq import MultiEntityList
 from . import map
@@ -97,7 +103,7 @@ class Test_env :
         def set_FPV_cam_pos(self):
             self.cam.set_pose(
             transform = trans_quat_to_T(trans = self.get_pos(), 
-                                        quat = transform_quat_by_quat(self.cam.cam_quat, self.imu.body_quat))[0].cpu().numpy() # lookat = (0, 0, 0.5)
+                                        quat = transform_quat_by_quat(self.cam.cam_quat, self.imu.body_quat))[0].cpu().numpy()
         )
         setattr(cam, 'cam_quat', self.cam_quat)  
         setattr(cam, 'set_FPV_cam_pos', types.MethodType(set_FPV_cam_pos, self.drone))
@@ -105,13 +111,31 @@ class Test_env :
         setattr(cam ,'depth', depth)
         setattr(self.drone, 'cam', cam)
 
+        # add lidar on drone
+        self.lidar = GenesisLidar(
+            drone=self.drone,
+            scene=self.scene,
+            drone_idx=[self.drone.idx],
+            num_envs=1,
+            headless=False,
+            sensor_type=LidarType.MID360,
+            visualization_mode='spheres'
+        )
+
+        # lidar = Lidar(self.scene, [self.drone.idx])
+        # def set_lidar_pos(self):
+        #     self.lidar.set_pose(
+        #     transform = trans_quat_to_T(trans = self.get_pos(), 
+        #                                 quat = transform_quat_by_quat(self.lidar.lidar_quat, self.imu.body_quat))[0].cpu().numpy()
+        # )
+        # setattr(lidar, 'set_lidar_pos', types.MethodType(set_lidar_pos, self.drone))  
+        # setattr(self.drone, 'lidar', lidar)
 
         # add viewer 
         self.scene.viewer.follow_entity(self.drone)  # follow drone
 
         # build world
         self.scene.build(n_envs = env_num)
-
 
 
     def update_entity_dis_list(self):
@@ -127,7 +151,7 @@ class Test_env :
         self.scene.step()
 
         self.update_entity_dis_list()
-
+        self.lidar.step()
         self.drone.entity_dis_list.print()
         self.drone.cam.set_FPV_cam_pos()
         _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)

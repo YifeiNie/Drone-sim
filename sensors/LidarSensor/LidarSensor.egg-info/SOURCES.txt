@@ -1,0 +1,5 @@
+setup.py
+LidarSensor.egg-info/PKG-INFO
+LidarSensor.egg-info/SOURCES.txt
+LidarSensor.egg-info/dependency_links.txt
+LidarSensor.egg-info/top_level.txt
