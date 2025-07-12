@@ -109,7 +109,7 @@ class PIDcontroller:
             self.tpa_factor = 1.0 - self.tpa_rate
 
 
-    def controller_step(self):
+    def step(self):
         self.imu.imu_update()
         # if(self.rc_command["ARM"] == 0):
         #     self.drone.set_propellels_rpm(torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float))

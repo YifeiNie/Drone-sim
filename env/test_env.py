@@ -14,7 +14,7 @@ from sensors.LidarSensor.lidar_sensor import LidarSensor
 from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 
 from flight.mavlink_sim import rc_command
-from utils.heapq import MultiEntityList
+from utils.heapq_ import MultiEntityList
 from . import map
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
 import numpy as np
@@ -23,21 +23,21 @@ class Test_env :
     def __init__(self, env_num, yaml_path, drone, device = torch.device("cuda")):
 
         with open(yaml_path, "r") as file:
-            config = yaml.load(file, Loader = yaml.FullLoader)
+            self.config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
 
         self.env_num = env_num
         self.rendered_env_num = min(10, self.env_num)
 
-        self.dt = config.get("dt", 0.01)   # default sim env update in 100hz
+        self.dt = self.config.get("dt", 0.01)   # default sim env update in 100hz
         
-        self.cam_quat = torch.tensor(config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(env_num, -1)
+        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(env_num, -1)
 
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
             viewer_options = gs.options.ViewerOptions(
-                max_FPS = config.get("max_vis_FPS", 60),
+                max_FPS = self.config.get("max_vis_FPS", 60),
                 camera_pos = (-3.0, 0.0, 3.0),
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
@@ -61,7 +61,7 @@ class Test_env :
 
         # add entity in map
         self.map.add_trees_to_scene(scene = self.scene)
-
+        
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
@@ -69,30 +69,66 @@ class Test_env :
         self.drone = self.scene.add_entity(drone)
         
         # restore distance list with entity
-        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=config.get("max_dis_num", 5), env_num=self.env_num))     
+        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), env_num=self.env_num))     
         
         # add imu for drone
+        self.set_drone_imu()
+
+        # add controller for drone
+        self.set_drone_controller()
+
+        # add drone camera
+        self.set_drone_camera()
+
+        # build world
+        self.scene.build(n_envs = env_num)
+
+        # add lidar
+        self.set_drone_lidar()
+
+    def update_entity_dis_list(self):
+        cur_pos = self.drone.get_pos()
+        for key, tree in self.map.tree_entity_list.items():
+            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
+            self.drone.entity_dis_list.update(key, min_dis)
+
+    def sim_step(self): 
+        self.scene.step()
+
+        self.update_entity_dis_list()
+        self.drone.entity_dis_list.print()
+
+        self.drone.lidar.step()
+        
+        self.drone.cam.set_FPV_cam_pos()
+        _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
+
+        self.drone.controller.step()
+    
+    def set_drone_imu(self):
         imu = IMU_sim(
-            env_num = config.get("env_num", 1),
+            env_num = self.config.get("env_num", 1),
             yaml_path = "config/imu_sim_param.yaml",
             device = torch.device("cuda")
         )
         imu.set_drone(self.drone)
-        setattr(self.drone, 'imu', imu)     
-
-        # add controller for drone
-        pid = PIDcontroller(
-            env_num = config.get("env_num", 1), 
-            rc_command = rc_command,
-            imu_sim = imu, 
-            yaml_path = "config/pid_param.yaml",
-            device = torch.device("cuda")
+        setattr(self.drone, 'imu', imu) 
+        
+    def set_drone_lidar(self):
+        lidar = GenesisLidar(
+            drone=self.drone,
+            scene=self.scene,
+            drone_idx=[self.drone.idx, self.plane.idx],
+            num_envs=1,
+            headless=False,
+            sensor_type=LidarType.MID360,
+            visualization_mode='spheres'
         )
-        pid.set_drone(self.drone)
-        setattr(self.drone, 'controller', pid)  
+        # def set_lidar_pos(self):
+        setattr(self.drone, 'lidar', lidar)
 
-        # add camera on drone
-        if (config.get("use_FPV_camera", False)):
+    def set_drone_camera(self):
+        if (self.config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
                 res=(640, 480),
                 pos=(-3.5, 0.0, 2.5),
@@ -111,61 +147,14 @@ class Test_env :
         setattr(cam ,'depth', depth)
         setattr(self.drone, 'cam', cam)
 
-        # add lidar on drone
-        # self.lidar = GenesisLidar(
-        #     drone=self.drone,
-        #     scene=self.scene,
-        #     drone_idx=[self.drone.idx],
-        #     num_envs=1,
-        #     headless=False,
-        #     sensor_type=LidarType.MID360,
-        #     visualization_mode='spheres'
-        # )
 
-        # lidar = Lidar(self.scene, [self.drone.idx])
-        # def set_lidar_pos(self):
-        #     self.lidar.set_pose(
-        #     transform = trans_quat_to_T(trans = self.get_pos(), 
-        #                                 quat = transform_quat_by_quat(self.lidar.lidar_quat, self.imu.body_quat))[0].cpu().numpy()
-        # )
-        # setattr(lidar, 'set_lidar_pos', types.MethodType(set_lidar_pos, self.drone))  
-        # setattr(self.drone, 'lidar', lidar)
-
-        # add viewer 
-        # self.scene.viewer.follow_entity(self.drone)  # follow drone
-
-        # build world
-        self.scene.build(n_envs = env_num)
-        self.lidar = GenesisLidar(
-            drone=self.drone,
-            scene=self.scene,
-            drone_idx=[self.drone.idx, self.plane.idx],
-            num_envs=1,
-            headless=False,
-            sensor_type=LidarType.MID360,
-            visualization_mode='spheres'
+    def set_drone_controller(self):
+        pid = PIDcontroller(
+            env_num = self.config.get("env_num", 1), 
+            rc_command = rc_command,
+            imu_sim = self.drone.imu, 
+            yaml_path = "config/pid_param.yaml",
+            device = torch.device("cuda")
         )
-
-    def update_entity_dis_list(self):
-        cur_pos = self.drone.get_pos()
-        for key, tree in self.map.tree_entity_list.items():
-            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
-            self.drone.entity_dis_list.update(key, min_dis)
-
-    def sim_step(self): 
-        # print(f"drone pos is {self.drone.get_pos()}")
-        # print(f"tree pos is {self.map.tree_entity_list[0].get_pos()}")
-        # print(f"dis is {self.map.get_min_dis_from_entity(self.map.tree_entity_list[0], self.drone.get_pos())}")
-        self.scene.step()
-
-        self.update_entity_dis_list()
-
-        self.lidar.step()
-        self.drone.entity_dis_list.print()
-        self.drone.cam.set_FPV_cam_pos()
-        _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
-        self.drone.controller.controller_step()      # pid controller
-
-    def get_drone(self) :
-        return self.drone
-    
+        pid.set_drone(self.drone)
+        setattr(self.drone, 'controller', pid)      

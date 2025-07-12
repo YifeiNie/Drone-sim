@@ -10,6 +10,9 @@ class ForestEnv:
 
         self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
                         "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
+        
+        self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
+                               "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
         self.weights = [0.65, 0.35]
 
         if len(self.strings) != len(self.weights):
@@ -25,7 +28,10 @@ class ForestEnv:
         self.tree_entity_list = {}
 
     def pick(self):
-        return random.choices(self.strings, weights=self.weights, k=1)[0]
+        return random.choices(
+            population=range(len(self.strings)),   # 0, 1, 2, ...
+            weights=self.weights,
+            k=1)[0]
     
     def in_neighborhood(self, x, y):
         gx, gy = int(x / self.cell_size), int(y / self.cell_size)
@@ -68,35 +74,39 @@ class ForestEnv:
         positions = self.generate_poisson_points()
 
         for x, y in positions:
-            tree_file = self.pick()
-            scale = random.uniform(0.8, 1.3)
-            roll = math.radians(random.uniform(0, 10))
-            pitch = math.radians(random.uniform(0, 10))
-            yaw = math.radians(random.uniform(0, 360))
+            idx = self.pick()
+            tree_file = self.strings[idx]
+            tree_file_for_collision = self.strings_convex[idx]
 
-            entity = scene.add_entity(
-                morph=morphs.Mesh(
-                    file=tree_file,
-                    pos=(x-1.5, y-1.5, 0.0),
-                    euler=(
-                        90 + math.degrees(roll),  # roll
-                        math.degrees(pitch),      # pitch  
-                        math.degrees(yaw)         # yaw
-                    ),
-                    scale=(scale, scale, scale),
-                    collision=True,
-                    convexify=True,
-                    decimate=True,
-                    requires_jac_and_IK=False,
-                    fixed=True,
-                    parse_glb_with_trimesh=True,
-                    merge_submeshes_for_collision=False,
-                    group_by_material=False,
-                    visualization=True
-                )
-            )
+            scale = random.uniform(0.8, 1.3)
+            roll = math.radians(random.uniform(0, 20))
+            pitch = math.radians(random.uniform(0, 20))
+            yaw = math.radians(random.uniform(0, 360))
+            morph=morphs.Mesh(
+                file=tree_file,
+                pos=(x-0.5, y-1.5, 0.0),
+                euler=(
+                    90 + math.degrees(roll),  # roll
+                    math.degrees(pitch),      # pitch  
+                    math.degrees(yaw)         # yaw
+                ),
+                scale=(scale, scale, scale),
+                collision=True,
+                convexify=True,
+                decimate=True,
+                requires_jac_and_IK=False,
+                fixed=True,
+                parse_glb_with_trimesh=True,
+                merge_submeshes_for_collision=False,
+                group_by_material=False,
+                visualization=True,
+                # use_3rd_file=tree_file_for_collision,
+            )        
+
+            entity = scene.add_entity(morph)
 
             self.tree_entity_list[entity.idx] = entity
+            
 
     def get_min_dis_from_entity(self, entity, pos):
         # return: 1d-numpy or 0d numpy with env_num == 1
