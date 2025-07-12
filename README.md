@@ -21,3 +21,4 @@
 
 ### Ref
 - [gazebo-vegetation](https://github.com/kubja/gazebo-vegetation)
+- [OmniPerception](https://github.com/aCodeDog/OmniPerception)
