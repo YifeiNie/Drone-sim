@@ -14,3 +14,21 @@
     }
   ]
 }
+
+// {
+//   "version": "0.2.0",
+//   "configurations": [
+//     {
+//       "name": "Python: Conda 调试",
+//       "type": "debugpy",
+//       "request": "launch",
+//       "program": "${workspaceFolder}/utils/mesh_preprocess.py",
+//       "console": "integratedTerminal",
+//       "env": {
+//         "PYTHONPATH": "${workspaceFolder}"
+//       },
+//       "python": "/home/nyf/miniconda3/envs/RING-env/bin/python"
+//     }
+//   ]
+// }
+
