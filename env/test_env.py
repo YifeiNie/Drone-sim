@@ -16,7 +16,7 @@ from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 from flight.mavlink_sim import rc_command
 from utils.heapq_ import MultiEntityList
 from . import map
-from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat
+from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
 import numpy as np
 
 class Test_env :
@@ -67,6 +67,7 @@ class Test_env :
 
         # add drone
         self.drone = self.scene.add_entity(drone)
+        # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
         setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), env_num=self.env_num))     
@@ -99,9 +100,25 @@ class Test_env :
         self.drone.entity_dis_list.print()
 
         self.drone.lidar.step()
-        
-        self.drone.cam.set_FPV_cam_pos()
-        _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
+
+        # all_verts = []
+        # entity_list = [e for e in self.scene.entities if e.idx not in [self.drone.idx, self.plane.idx]]
+        # for entity in entity_list:
+        #     pos = entity.get_pos()
+        #     quat = entity.get_quat()
+        #     for link in entity.links:
+        #         for geom in link.geoms:
+        #             verts = torch.tensor(geom.mesh.verts, dtype=torch.float32, device=quat.device)
+        #             verts = transform_by_trans_quat(verts, pos, quat)
+
+        #             all_verts.append(verts.detach().cpu().numpy())
+                    
+        # self.scene.draw_debug_spheres(
+        #     poss=np.vstack(all_verts),
+        #     radius=0.02,
+        # )
+        # self.drone.cam.set_FPV_cam_pos()
+        # _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
 
         self.drone.controller.step()
     
