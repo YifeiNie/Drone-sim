@@ -7,7 +7,8 @@ import torch as th
 
 class ForestEnv:
     def __init__(self, min_tree_dis, width, length):
-
+        
+        # remember to modify the file path
         self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
                         "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
         
