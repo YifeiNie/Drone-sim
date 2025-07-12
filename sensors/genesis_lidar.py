@@ -150,24 +150,19 @@ class GenesisLidar:
 
         for entity in self.entity_list:
             pos = entity.get_pos()
-            for geom in entity.geoms:
-                if pos.ndim == 2:
-                    pos0 = pos[0].cpu().numpy()
-                else:
-                    pos0 = pos.cpu().numpy()
-                verts = np.asarray(geom.mesh.verts)
-                rotated_verts = verts.copy()
-                rotated_verts[:, 1], rotated_verts[:, 2] = -verts[:, 2], verts[:, 1]
-                faces = np.asarray(geom.mesh.faces)
-                rotated_verts = rotated_verts + pos0
-                all_verts.append(rotated_verts)
+            quat = entity.get_quat()
+            for link in entity.links:
+                for geom in link.geoms:
+                    verts = torch.tensor(geom.mesh.verts, dtype=torch.float32, device=quat.device)
+                    faces = np.asarray(geom.mesh.faces)
 
-                faces_shifted = faces + vert_offset
-                all_faces.append(faces_shifted)
+                    verts = gs.utils.geom.transform_by_trans_quat(verts, pos, quat)
+                    all_verts.append(verts.detach().cpu().numpy())
 
-                vert_offset += len(verts)
-        # self.verts = np.vstack(all_verts)  # shape: (N, 3)
-        # self.faces = np.vstack(all_faces)  # shape: (M, 3)
+                    faces_shifted = faces + vert_offset
+                    all_faces.append(faces_shifted)
+                    vert_offset += len(verts)
+
         return np.vstack(all_verts), np.vstack(all_faces)
     
     def _update_robot_state(self):

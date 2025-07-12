@@ -79,8 +79,8 @@ class ForestEnv:
             tree_file_for_collision = self.strings_convex[idx]
 
             scale = random.uniform(0.8, 1.3)
-            roll = math.radians(random.uniform(0, 20))
-            pitch = math.radians(random.uniform(0, 20))
+            roll = math.radians(random.uniform(0, 30))
+            pitch = math.radians(random.uniform(0, 30))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
                 file=tree_file,
@@ -90,17 +90,17 @@ class ForestEnv:
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale, scale, scale),
+                scale=(scale*0.02, scale*0.02, scale*0.02),
                 collision=True,
-                convexify=True,
-                decimate=True,
+                convexify=False,
+                decimate=False,
                 requires_jac_and_IK=False,
                 fixed=True,
                 parse_glb_with_trimesh=True,
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                # use_3rd_file=tree_file_for_collision,
+                use_3rd_file=tree_file_for_collision,
             )        
 
             entity = scene.add_entity(morph)
