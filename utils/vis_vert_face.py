@@ -1,7 +1,7 @@
 import numpy as np
 import open3d as o3d
 
-def load_and_visualize_mesh(vertex_file='/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/vertices.txt', face_file='/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/faces.txt'):
+def load_and_visualize_mesh(vertex_file='~/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/vertices.txt', face_file='~/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/faces.txt'):
     vertices = np.loadtxt(vertex_file, dtype=np.float64)
     faces = np.loadtxt(face_file, dtype=np.int32)
 

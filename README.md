@@ -5,7 +5,7 @@
 - use Type-c to power the FCU, and connect UART port (on FCU) and USB port (on PC) through USB2TTL module, like:
 - <img src="./doc/1.png"  width="300" /> <br>
 - connect the FC and use mavlink to send FC_data from FCU to PC
-- use `ls /dev/tty*` to check the port id and modified param `USB_path` in `./config/mavlink_param.yaml`
+- use `ls /dev/tty*` to check the port id and modified param `USB_path` in `./config/flight/mavlink_param.yaml`
 - do this since the default mavlink frequence for rc_channle is too low
 
 ### Run demo

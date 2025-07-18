@@ -35,9 +35,9 @@ class EntityList:
 
 
 class MultiEntityList:
-    def __init__(self, max_size, env_num):
-        self.env_num = env_num
-        self.lists = [EntityList(max_size) for _ in range(env_num)]
+    def __init__(self, max_size, num_envs):
+        self.num_envs = num_envs
+        self.lists = [EntityList(max_size) for _ in range(num_envs)]
 
     def update(self, entity_idxs, new_values):
         """
@@ -46,7 +46,7 @@ class MultiEntityList:
         new_values: list/array/tensor of shape [n_envs]
         """
 
-        for i in range(self.env_num):
+        for i in range(self.num_envs):
             idx = int(entity_idxs)
             val = float(self.ensure_array(new_values)[i])
             self.lists[i].update(idx, val)

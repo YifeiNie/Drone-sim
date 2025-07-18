@@ -49,7 +49,7 @@ pos:
 
 pid_exec_freq: 60
 base_rpm: 70000.0
-max_rad: 
+use_RC: True
 
 # unit is grams
 weight: 500.0     

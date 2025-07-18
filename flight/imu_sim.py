@@ -7,30 +7,27 @@ from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transfo
 
 # NOTE :IMU is not an odomtry, only has anglear_velocity and linear_accerleration
 class IMU_sim:
-    def __init__(self, env_num, yaml_path, device = torch.device("cuda")):
+    def __init__(self, num_envs, yaml_path, device = torch.device("cuda")):
         with open(yaml_path, "r") as file:
             config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
         self.drone = None
-        self.env_num = env_num
-        
-        # self.last_body_pos = torch.zeros_like(self.body_pos)
-        # self.body_pos = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.num_envs = num_envs
 
-        self.body_euler = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
-        self.body_linear_vel = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
-        self.body_linear_acc = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)        
-        self.body_ang_vel = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.body_euler = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.body_linear_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.body_linear_acc = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)        
+        self.body_ang_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.last_body_linear_vel = torch.zeros_like(self.body_linear_vel)    # used to cal acc
 
-        self.body_quat = torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float)
-        self.body_quat_inv = torch.zeros((self.env_num, 4), device=self.device, dtype=gs.tc_float)
+        self.body_quat = torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float)
+        self.body_quat_inv = torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float)
 
-        self.world_euler = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
-        self.world_linear_vel = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
-        self.world_linear_acc = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.world_euler = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.world_linear_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.world_linear_acc = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.last_world_linear_vel = torch.zeros_like(self.body_linear_vel)
-        self.world_ang_vel = torch.zeros((self.env_num, 3), device=self.device, dtype=gs.tc_float)
+        self.world_ang_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.last_time = time.perf_counter()
 
 
@@ -76,7 +73,7 @@ class IMU_sim:
 
     def gyro_update(self):
         self.cal_cur_quat()    # since gyro_update has the highest freq
-        cur_ang_vel = self.drone.get_ang()
+        cur_ang_vel = self.drone.get_ang()      # (roll, pitch, yaw)
         self.body_ang_vel[:] = cur_ang_vel
         self.world_ang_vel[:] = transform_by_quat(cur_ang_vel, self.body_quat_inv)
 
