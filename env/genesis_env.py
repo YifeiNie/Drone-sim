@@ -3,7 +3,6 @@ import math
 import time
 import yaml
 import types
-# import taichi as ti
 import genesis as gs
 from flight.pid import PIDcontroller
 from flight.imu_sim import IMU_sim
@@ -19,19 +18,16 @@ from . import map
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
 import numpy as np
 
-class Test_env :
-    def __init__(self, env_num, yaml_path, drone, device = torch.device("cuda")):
+class Genesis_env :
+    def __init__(self, num_envs, yaml_path, drone, device = torch.device("cuda")):
 
         with open(yaml_path, "r") as file:
             self.config = yaml.load(file, Loader = yaml.FullLoader)
         self.device = device
-
-        self.env_num = env_num
-        self.rendered_env_num = min(10, self.env_num)
-
-        self.dt = self.config.get("dt", 0.01)   # default sim env update in 100hz
-        
-        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(env_num, -1)
+        self.num_envs = num_envs
+        self.rendered_env_num = min(10, self.num_envs)
+        self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
+        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(num_envs, -1)
 
         # create scene
         self.scene = gs.Scene(
@@ -70,7 +66,7 @@ class Test_env :
         # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
-        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), env_num=self.env_num))     
+        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), num_envs=self.num_envs))     
         
         # add imu for drone
         self.set_drone_imu()
@@ -82,50 +78,31 @@ class Test_env :
         self.set_drone_camera()
 
         # build world
-        self.scene.build(n_envs = env_num)
+        self.scene.build(n_envs = num_envs)
 
         # add lidar
         self.set_drone_lidar()
 
-    def update_entity_dis_list(self):
-        cur_pos = self.drone.get_pos()
-        for key, tree in self.map.tree_entity_list.items():
-            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
-            self.drone.entity_dis_list.update(key, min_dis)
-
     def sim_step(self): 
         self.scene.step()
 
-        self.update_entity_dis_list()
-        self.drone.entity_dis_list.print()
+        # self.update_entity_dis_list()
 
-        self.drone.lidar.step()
+        # self.drone.lidar.step()
 
-        # all_verts = []
-        # entity_list = [e for e in self.scene.entities if e.idx not in [self.drone.idx, self.plane.idx]]
-        # for entity in entity_list:
-        #     pos = entity.get_pos()
-        #     quat = entity.get_quat()
-        #     for link in entity.links:
-        #         for geom in link.geoms:
-        #             verts = torch.tensor(geom.mesh.verts, dtype=torch.float32, device=quat.device)
-        #             verts = transform_by_trans_quat(verts, pos, quat)
+        self.drone.cam.set_FPV_cam_pos()
 
-        #             all_verts.append(verts.detach().cpu().numpy())
-                    
-        # self.scene.draw_debug_spheres(
-        #     poss=np.vstack(all_verts),
-        #     radius=0.02,
-        # )
-        # self.drone.cam.set_FPV_cam_pos()
-        # _, self.drone.cam.depth, _, _ = self.drone.cam.render(rgb=True, depth=True, segmentation=False, normal=False)
+        self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
 
         self.drone.controller.step()
-    
+
+        self.get_aabb_list()
+
+
     def set_drone_imu(self):
         imu = IMU_sim(
-            env_num = self.config.get("env_num", 1),
-            yaml_path = "config/imu_sim_param.yaml",
+            num_envs = self.config.get("num_envs", 1),
+            yaml_path = "config/flight/imu_sim_param.yaml",
             device = torch.device("cuda")
         )
         imu.set_drone(self.drone)
@@ -167,11 +144,50 @@ class Test_env :
 
     def set_drone_controller(self):
         pid = PIDcontroller(
-            env_num = self.config.get("env_num", 1), 
+            num_envs = self.config.get("num_envs", 1), 
             rc_command = rc_command,
             imu_sim = self.drone.imu, 
-            yaml_path = "config/pid_param.yaml",
+            yaml_path = "config/flight/pid_param.yaml",
             device = torch.device("cuda")
         )
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)      
+
+    def update_entity_dis_list(self):
+        cur_pos = self.drone.get_pos()
+        for key, tree in self.map.tree_entity_list.items():
+            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
+            self.drone.entity_dis_list.update(key, min_dis)
+
+    def vis_verts(self):
+        all_verts = []
+        entity_list = [e for e in self.scene.entities if e.idx not in [self.drone.idx, self.plane.idx]]
+        for entity in entity_list:
+            pos = entity.get_pos()
+            quat = entity.get_quat()
+            for link in entity.links:
+                for geom in link.geoms:
+                    verts = torch.tensor(geom.mesh.verts, dtype=torch.float32, device=quat.device)
+                    verts = transform_by_trans_quat(verts, pos, quat)
+                    all_verts.append(verts.detach().cpu().numpy())
+        self.scene.draw_debug_spheres(
+            poss=np.vstack(all_verts),
+            radius=0.02,
+        )
+
+    def get_aabb_list(self):
+        """
+        Get a set of bounding box vertices of occupations
+
+        :param: none
+        :return: list(torch.tensor(num_envs, 2, 3))
+        """
+        aabb_list = []
+        for entity in self.scene.entities:
+            if (entity.idx == self.plane.idx):
+                continue
+            aabb_list.append(entity.get_AABB())
+        return aabb_list
+
+
+
