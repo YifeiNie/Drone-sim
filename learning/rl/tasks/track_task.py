@@ -53,24 +53,6 @@ class Track_task(VecEnv):
 
         self._register_reward_fun()
 
-        # add target
-        if self.env_config["vis_waypoints"]:
-            self.target = self.genesis_env.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="meshes/sphere.obj",
-                    scale=0.03,
-                    fixed=False,
-                    collision=False,
-                ),
-                surface=gs.surfaces.Rough(
-                    diffuse_texture=gs.textures.ColorTexture(
-                        color=(1.0, 0.5, 0.5),
-                    ),
-                ),
-            )
-        else:
-            self.target = None
-
     def compute_reward(self):
         self.reward_buf[:] = 0.0
         for name, reward_func in self.reward_functions.items():
@@ -93,7 +75,7 @@ class Track_task(VecEnv):
         return yaw_reward
 
     def _reward_angular(self):
-        angular_reward = torch.norm(self.drone.odom.body_ang_vel / 3.14159, dim=1)
+        angular_reward = torch.norm(self.genesis_env.drone.odom.body_ang_vel / 3.14159, dim=1)
         return angular_reward
 
     def _reward_crash(self):
@@ -113,24 +95,24 @@ class Track_task(VecEnv):
             self.episode_reward_sums[name] = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
 
     def _at_target(self):
-        at_target = ((torch.norm(self.rel_pos, dim=1) < self.task_config["target_thr"]).nonzero(as_tuple=False).flatten())
+        at_target = ((torch.norm(self.cur_pos_error, dim=1) < self.task_config["target_thr"]).nonzero(as_tuple=False).flatten())
         return at_target
 
     def step(self, action):
 
-        if self.target is not None:
-            self.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
+        if self.genesis_env.target is not None:
+            self.genesis_env.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
         self.genesis_env.step(action)
         self.episode_length_buf += 1
-        self.last_pos_error = self.command - self.genesis_env.drone.odom.last_world_pos
-        self.cur_pos_error = self.command - self.genesis_env.drone.odom.world_pos
+        self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
+        self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
         self.crash_condition = (
-            (torch.abs(self.base_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
-            | (torch.abs(self.base_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
+            (torch.abs(self.genesis_env.drone.odom.body_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
+            | (torch.abs(self.genesis_env.drone.odom.body_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
-            | (self.base_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
+            | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
         self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
@@ -138,7 +120,7 @@ class Track_task(VecEnv):
         self.compute_reward()
         self._update_obs()
 
-        return self.get_observations(), self.rew_buf, self.done_buf, self.extras
+        return self.get_observations(), None, self.reward_buf, self.reset_buf, self.extras
 
 
     def reset(self, env_idx=None):
@@ -163,12 +145,24 @@ class Track_task(VecEnv):
 
     def get_observations(self):
         obs = self.obs_buf
-        return TensorDict({"obs": obs}, batch_size=[self.num_envs])
+        return obs
+        # return TensorDict({"obs": obs}, batch_size=[self.num_envs])
 
     def _update_obs(self):
+        def check_nan(name, tensor):
+            if torch.isnan(tensor).any():
+                print(f"⚠️ [NaN DETECTED] {name} 有 NaN！")
+
+        check_nan("cur_pos_error", self.cur_pos_error)
+        check_nan("body_quat", self.genesis_env.drone.odom.body_quat)
+        check_nan("world_linear_vel", self.genesis_env.drone.odom.world_linear_vel)
+        check_nan("body_ang_vel", self.genesis_env.drone.odom.body_ang_vel)
+        check_nan("last_actions", self.last_actions)
+
+        # ========== 原始 obs 拼接逻辑 ========== #
         self.obs_buf = torch.cat(
             [
-                torch.clip(self.cur_pos_error * self.obs_scales["rel_pos"], -1, 1),
+                torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
                 self.genesis_env.drone.odom.body_quat,
                 torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
                 torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
@@ -177,5 +171,6 @@ class Track_task(VecEnv):
             axis=-1,
         )
 
-
+    def get_privileged_observations(self):
+        return None
 

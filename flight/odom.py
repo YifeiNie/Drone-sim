@@ -89,23 +89,23 @@ class Odom:
         else:
             reset_range = env_idx
         # Reset body data to zero
-        self.body_euler[reset_range] = torch.zeros_like(self.body_euler)
-        self.body_linear_vel[reset_range] = torch.zeros_like(self.body_linear_vel)
-        self.body_linear_acc[reset_range] = torch.zeros_like(self.body_linear_acc)
-        self.body_ang_vel[reset_range] = torch.zeros_like(self.body_ang_vel)
-        self.body_quat[reset_range] = torch.zeros_like(self.body_quat)
-        self.body_quat_inv[reset_range] = torch.zeros_like(self.body_quat_inv)
-        self.last_body_linear_vel[reset_range] = torch.zeros_like(self.last_body_linear_vel)
+        self.body_euler.index_fill_(0, reset_range, 0.0)
+        self.body_linear_vel.index_fill_(0, reset_range, 0.0)
+        self.body_linear_acc.index_fill_(0, reset_range, 0.0)
+        self.body_ang_vel.index_fill_(0, reset_range, 0.0)
+        self.body_quat.index_fill_(0, reset_range, 0.0)
+        self.body_quat_inv.index_fill_(0, reset_range, 0.0)
+        self.last_body_linear_vel.index_fill_(0, reset_range, 0.0)
 
         # Reset global data to zero
-        self.world_euler[reset_range] = torch.zeros_like(self.world_euler)
-        self.world_linear_vel[reset_range] = torch.zeros_like(self.world_linear_vel)
-        self.world_linear_acc[reset_range] = torch.zeros_like(self.world_linear_acc)
-        self.world_pos[reset_range] = torch.zeros_like(self.world_pos)
-        self.world_ang_vel[reset_range] = torch.zeros_like(self.world_ang_vel)
+        self.world_euler.index_fill_(0, reset_range, 0.0)
+        self.world_linear_vel.index_fill_(0, reset_range, 0.0)
+        self.world_linear_acc.index_fill_(0, reset_range, 0.0)
+        self.world_pos.index_fill_(0, reset_range, 0.0)
+        self.world_ang_vel.index_fill_(0, reset_range, 0.0)
 
-        self.last_world_pos[reset_range] = torch.zeros_like(self.last_world_pos)
-        self.last_world_linear_vel[reset_range] = torch.zeros_like(self.last_world_linear_vel)
+        self.last_world_pos.index_fill_(0, reset_range, 0.0)
+        self.last_world_linear_vel.index_fill_(0, reset_range, 0.0)
 
         # Reset the time
         self.last_time = time.perf_counter()
