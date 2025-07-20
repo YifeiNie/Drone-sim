@@ -211,11 +211,11 @@ class PlaNet(Network):
     def _internal_call(self, inputs):
         # Determine the IMU observation dimension based on config
         if self.config.use_position:
-            imu_obs = inputs['imu'] # (batch_size, seq_len, total_imu_dim)
+            imu_obs = inputs['odom'] # (batch_size, seq_len, total_imu_dim)
             self.config.imu_dim = imu_obs.shape[-1]
         else:
             # always pass z
-            imu_obs = inputs['imu'][:, :, 3:]
+            imu_obs = inputs['odom'][:, :, 3:]
             self.config.imu_dim = imu_obs.shape[-1]
 
         if not self.config.use_attitude:
@@ -223,7 +223,7 @@ class PlaNet(Network):
                 print("ERROR: Do not use position without attitude!")
                 return
             else:
-                imu_obs = inputs['imu'][:, :, 12:] # velocity and optionally body rates
+                imu_obs = inputs['odom'][:, :, 12:] # velocity and optionally body rates
                 self.config.imu_dim = imu_obs.shape[-1]
 
         imu_embeddings = self._imu_branch(imu_obs) # [B, modes, 32]

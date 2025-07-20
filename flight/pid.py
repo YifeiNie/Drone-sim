@@ -10,13 +10,13 @@ import numpy as np
 
 
 class PIDcontroller:
-    def __init__(self, num_envs, rc_command, imu_sim, yaml_path, device = torch.device("cuda")):
+    def __init__(self, num_envs, rc_command, odom, yaml_path, device = torch.device("cuda")):
         with open(yaml_path, "r") as file:
             config = yaml.load(file, Loader=yaml.FullLoader)
         self.rc_command = rc_command
         self.device = device
         self.num_envs = num_envs
-        self.imu = imu_sim
+        self.odom = odom
         self.use_RC = config.get("use_RC", False)
 
         # Shape: (n, 3)
@@ -99,7 +99,7 @@ class PIDcontroller:
             self.tpa_factor = 1.0 - self.tpa_rate
 
     def step(self, action=0):
-        self.imu.imu_update()
+        self.odom.odom_update()
         if(self.rc_command["ARM"] == 0):
             self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
             return
@@ -121,12 +121,12 @@ class PIDcontroller:
         """
 
         self.body_set_point[:] = action[:, :-1] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = self.body_set_point * 10 - self.imu.body_ang_vel
+        cur_angle_rate_error = self.body_set_point * 10 - self.odom.body_ang_vel
 
         self.P_term_r[:] = (cur_angle_rate_error * self.kp_r) * self.tpa_factor
         self.I_term_r[:] = self.I_term_r + cur_angle_rate_error * self.ki_r
-        self.D_term_r[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd_r * self.tpa_factor    
-        self.last_body_ang_vel[:] = self.imu.body_ang_vel
+        self.D_term_r[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_r * self.tpa_factor    
+        self.last_body_ang_vel[:] = self.odom.body_ang_vel
         self.pid_output[:] = (self.P_term_r + self.I_term_r + self.D_term_r)
 
     def angle_controller(self, action=0):  
@@ -136,28 +136,68 @@ class PIDcontroller:
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         action = torch.as_tensor(action, dtype=gs.tc_float)
-        self.body_set_point[:] = -self.imu.body_euler + action
+        self.body_set_point[:] = -self.odom.body_euler + action
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = (self.body_set_point * 10 - self.imu.body_ang_vel)
+        cur_angle_rate_error = (self.body_set_point * 10 - self.odom.body_ang_vel)
 
         self.P_term_a[:] = (cur_angle_rate_error * self.kp_a) * self.tpa_factor
         self.I_term_a[:] = self.I_term_a + cur_angle_rate_error * self.ki_a
-        self.D_term_a[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd_a * self.tpa_factor    
+        self.D_term_a[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_a * self.tpa_factor    
         # TODO feedforward term 
-        self.last_body_ang_vel[:] = self.imu.body_ang_vel
+        self.last_body_ang_vel[:] = self.odom.body_ang_vel
         self.pid_output[:] = (self.P_term_a + self.I_term_a + self.D_term_a)
 
 
     # def position_controller(self, action):
     #     action = torch.as_tensor(action, dtype=gs.tc_float)
     #     self.body_set_point[:] = action
-    #     cur_pos_error = (self.body_set_point * 10 - self.imu.body_ang_vel)
+    #     cur_pos_error = (self.body_set_point * 10 - self.odom.body_ang_vel)
 
     #     self.P_term_p[:] = (cur_pos_error * self.kp_p)
     #     self.I_term_p[:] = self.I_term_p + cur_pos_error * self.ki_p
-    #     self.D_term_p[:] = (self.last_body_ang_vel - self.imu.body_ang_vel) * self.kd_p  
+    #     self.D_term_p[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_p  
 
     #     sum = self.P_term_p + self.I_term_p + self.D_term_p 
 
     #     self.angle_controller(self, sum)
 
+    def reset(self, env_idx=None):
+        if env_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = env_idx
+        # Reset the PID terms (P, I, D, F)
+        self.P_term_a[reset_range] = torch.zeros_like(self.P_term_a)
+        self.I_term_a[reset_range] = torch.zeros_like(self.I_term_a)
+        self.D_term_a[reset_range] = torch.zeros_like(self.D_term_a)
+        self.F_term_a[reset_range] = torch.zeros_like(self.F_term_a)
+
+        self.P_term_r[reset_range] = torch.zeros_like(self.P_term_r)
+        self.I_term_r[reset_range] = torch.zeros_like(self.I_term_r)
+        self.D_term_r[reset_range] = torch.zeros_like(self.D_term_r)
+        self.F_term_r[reset_range] = torch.zeros_like(self.F_term_r)
+
+        self.P_term_p[reset_range] = torch.zeros_like(self.P_term_p)
+        self.I_term_p[reset_range] = torch.zeros_like(self.I_term_p)
+        self.D_term_p[reset_range] = torch.zeros_like(self.D_term_p)
+        self.F_term_p[reset_range] = torch.zeros_like(self.F_term_p)
+
+        # Reset the angle, position, and velocity errors
+        self.angle_rate_error[reset_range] = torch.zeros_like(self.angle_rate_error)
+        self.angle_error[reset_range] = torch.zeros_like(self.angle_error)
+
+        # Reset the body set points and pid output
+        self.body_set_point[reset_range] = torch.zeros_like(self.body_set_point)
+        self.pid_output[reset_range] = torch.zeros_like(self.pid_output)
+
+        # Reset the last angular velocity
+        self.last_body_ang_vel[reset_range] = torch.zeros_like(self.last_body_ang_vel)
+
+        # Reset the TPA factor and rate
+        self.tpa_factor = 1
+        self.tpa_rate = 0
+        # Reset the RC command values if necessary
+        if self.rc_command:
+            self.rc_command["throttle"] = 0
+            self.rc_command["ANGLE"] = 0
+            self.rc_command["ARM"] = 0

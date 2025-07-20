@@ -1,176 +1,181 @@
 
 import genesis as gs
-import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
 import torch
 import yaml
 import pandas as pd
 from typing import Any
+import types
+from .base import VecEnv
+from tensordict import TensorDict
+
+def gs_rand_float(lower, upper, shape, device):
+    return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class track_task(gym.Env):
-    def __init__(
-        self, 
-        env = None, 
-        env_config_path = None, 
-        learning_config_path = None, 
-        num_envs = 1,
-        agent_num = 1,
-        episode_len = 15, 
-        sim_freq = 100, 
-        ctrl_freq = 100
-    ):
-        
-        super().__init__()
-        self.env = env, 
-        self.num_envs = num_envs,
-        self.agent_num = agent_num,
-        self.episode_len = episode_len, 
-        self.sim_freq = sim_freq, 
-        self.ctrl_freq = ctrl_freq
-        self.np_random = None
-        
-        with open(env_config_path, "r") as file:
-            self.env_config = yaml.load(file, Loader=yaml.FullLoader)
+class Track_task(VecEnv):
+    def __init__(self, genesis_env, env_config, task_config):
+        # configs
+        self.genesis_env = genesis_env
+        self.env_config = env_config
+        self.task_config = task_config
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        with open(learning_config_path, "r") as file:
-            self.learning_config = yaml.load(file, Loader=yaml.FullLoader)
+        # nums
+        self.num_envs = self.env_config.get("num_envs", 1)
+        self.num_actions = task_config["num_actions"]
+        self.num_commands = task_config["num_commands"]
+        self.num_obs = task_config["num_obs"]
+        self.num_privileged_obs = None      # used for VecEnv
 
-        self.action_space = self._action_space()
+        # parameters
+        self.max_episode_length = self.task_config.get("max_episode_length", 1500)
+        self.reward_scales = task_config.get("reward_scales", {})
+        self.obs_scales = task_config.get("obs_scales", {})
+        self.command_cfg = self.env_config.get("command_cfg", {})
+        self.step_dt = self.env_config.get("dt", 0.01)
 
-        self.observation_space = self._observation_space()
+        # buffers
+        self.obs_buf = torch.zeros((self.num_envs, self.num_obs), device=self.device, dtype=gs.tc_float)
+        self.reward_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        self.reset_buf = torch.ones((self.num_envs,), device=self.device, dtype=gs.tc_int)
+        self.episode_length_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_int)
+        self.command_buf = torch.zeros((self.num_envs, self.num_commands), device=self.device, dtype=gs.tc_float)
+        self.crash_condition = torch.ones((self.num_envs,), device=self.device, dtype=bool)
+        self.cur_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
+        self.last_actions = torch.zeros_like(self.actions)
 
+        self.reward_functions = dict()
+        self.episode_reward_sums = dict()
+        self.extras = dict()  # extra information for logging
 
-    def _action_space(self) -> spaces.Box:
-        agent_action_space = spaces.Box(
-            low=np.array([-1, -1, -1, 0], dtype=np.float32),    # (roll, pitch, yaw, thrust)
-            high=np.array([1, 1, 1, 1], dtype=np.float32),
+        self._register_reward_fun()
+
+        # add target
+        if self.env_config["vis_waypoints"]:
+            self.target = self.genesis_env.scene.add_entity(
+                morph=gs.morphs.Mesh(
+                    file="meshes/sphere.obj",
+                    scale=0.03,
+                    fixed=False,
+                    collision=False,
+                ),
+                surface=gs.surfaces.Rough(
+                    diffuse_texture=gs.textures.ColorTexture(
+                        color=(1.0, 0.5, 0.5),
+                    ),
+                ),
+            )
+        else:
+            self.target = None
+
+    def compute_reward(self):
+        self.reward_buf[:] = 0.0
+        for name, reward_func in self.reward_functions.items():
+            reward = reward_func() * self.reward_scales[name]
+            self.reward_buf += reward
+            self.episode_reward_sums[name] += reward
+
+    def _reward_target(self):
+        target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
+        return target_reward
+
+    def _reward_smooth(self):
+        smooth_reward = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
+        return smooth_reward
+
+    def _reward_yaw(self):
+        yaw = self.genesis_env.drone.odom.body_euler[:, 2]
+        yaw = torch.where(yaw > 180, yaw - 360, yaw) / 180 * 3.14159  # use rad for yaw_reward
+        yaw_reward = torch.exp(self.task_config["yaw_lambda"] * torch.abs(yaw))
+        return yaw_reward
+
+    def _reward_angular(self):
+        angular_reward = torch.norm(self.drone.odom.body_ang_vel / 3.14159, dim=1)
+        return angular_reward
+
+    def _reward_crash(self):
+        crash_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        crash_reward[self.crash_condition] = 1
+        return crash_reward
+    
+    def _resample_commands(self, envs_idx):
+        self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(envs_idx),), self.device)
+
+    def _register_reward_fun(self):
+        for name in self.reward_scales.keys():
+            self.reward_scales[name] *= self.step_dt
+            self.reward_functions[name] = getattr(self, "_reward_" + name)
+            self.episode_reward_sums[name] = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+
+    def _at_target(self):
+        at_target = ((torch.norm(self.rel_pos, dim=1) < self.task_config["target_thr"]).nonzero(as_tuple=False).flatten())
+        return at_target
+
+    def step(self, action):
+
+        if self.target is not None:
+            self.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
+        self.genesis_env.step(action)
+        self.episode_length_buf += 1
+        self.last_pos_error = self.command - self.genesis_env.drone.odom.last_world_pos
+        self.cur_pos_error = self.command - self.genesis_env.drone.odom.world_pos
+        self.crash_condition = (
+            (torch.abs(self.base_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
+            | (torch.abs(self.base_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
+            | (self.base_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
-        return agent_action_space
+        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
+        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
+        self._resample_commands(self._at_target())
+        self.compute_reward()
+        self._update_obs()
 
-    def _observation_space(self) -> spaces.Box:
-        angent_observation_space = spaces.Box(
-            low=0, 
-            high=255,
-            shape=(self.learning_config.output_dim + self.learning_config.obs_dim, ),  # as a vector
-            dtype=np.float32)    
-        return angent_observation_space
-    
-
-    def reset(
-        self,
-        seed: int | None = None,
-        options: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, dict[str, Any]]:
-        super().reset(seed)
-        self.np_random, _ = gym.utils.seeding.np_random(seed)
-        aabb_list = self.env.get_aabb_list()
+        return self.get_observations(), self.rew_buf, self.done_buf, self.extras
 
 
-        observation = self._observation_space()
+    def reset(self, env_idx=None):
+        if env_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = env_idx
 
+        self.genesis_env.reset(reset_range)
+        self.last_actions[reset_range] = 0.0
+        self.episode_length_buf[reset_range] = 0
+        self.reset_buf[reset_range] = True
 
-        return observation, reward, terminated, truncated, info
+        self.extras["episode"] = {}
+        for key in self.episode_reward_sums.keys():
+            self.extras["episode"]["rew_" + key] = (
+                torch.mean(self.episode_reward_sums[key][reset_range]).item() / self.task_config["episode_length_s"]
+            )
+            self.episode_reward_sums[key][reset_range] = 0.0
+        self._resample_commands(reset_range)
+        return self.obs_buf, None
 
-    def reset(self, seed=None, options=None):
-        ...
-        return observation, info
+    def get_observations(self):
+        obs = self.obs_buf
+        return TensorDict({"obs": obs}, batch_size=[self.num_envs])
 
-    def render(self):
-        ...
-
-    def close(self):
-        ...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def ensure_min_distance(self, track_data, min_distance):
-        """
-        Ensure that consecutive points along the trajectory are separated by at least
-        a specified spatial distance, while keeping their time stamps in order.
-
-        :param track_data: Discrete trajectory samples, e.g.
-                           [(t1, x1, y1, z1), (t2, x2, y2, z2), ...]
-        :param min_distance: Minimum allowed distance between successive points (meters)
-        :return: Filtered trajectory points satisfying the distance constraint
-        """
-        adjusted_data = [track_data[0]]
-        for i in range(1, len(track_data)):
-            prev_point = adjusted_data[-1]
-            curr_point = track_data[i]
-            distance = np.linalg.norm(curr_point[1:] - prev_point[1:])
-            if distance >= min_distance:
-                adjusted_data.append(curr_point)
-        adjusted_data = np.array(adjusted_data)
-        return (
-            adjusted_data[:, 0],        # timestamp
-            adjusted_data[:, 1:4],      # position
-            adjusted_data[:, 4:7],      # speed 
-            adjusted_data[:, 7:11],     # quaternion
-            adjusted_data[:, 11:14],    # angular 
-            np.sum(adjusted_data[:, 14:18], axis=1) / 0.85 * self.M,    # thrust
-        )  
-
-    def calculate_tangent_vectors(self):
-        """
-        calculate tangent
-
-        :param track_points: position way points, like [(x1, y1, z1), (x2, y2, z2), ...]
-        :return: tangent array
-        """
-        track_points = self.track_points
-        tangent_vectors = np.zeros_like(self.track_points)
-        tangent_vectors[0] = track_points[1] - track_points[0]
-        tangent_vectors[1:-1] = track_points[2:] - track_points[:-2]
-        tangent_vectors[-1] = track_points[-1] - track_points[-2]
-        norms = np.linalg.norm(tangent_vectors, axis=1, keepdims=True)
-        tangent_unit_vectors = tangent_vectors / norms
-
-        return tangent_unit_vectors
-    
-
-    def read_track_points(self, track_points_path):
-        """
-        read waypoints from csv
-
-        :param track_path: csv file path
-        :return: path array, like [(t1, x1, y1, z1), (t2, x2, y2, z2), ...]
-        """
-        df = pd.read_csv(track_points_path)
-        track_data = df[
+    def _update_obs(self):
+        self.obs_buf = torch.cat(
             [
-                "t",                          # time stamp (s)
-                "p_x", "p_y", "p_z",          # position (m)
-                "v_x", "v_y", "v_z",          # linear velocity (m/s)
-                "q_x", "q_y", "q_z", "q_w",   # quaternion
-                "w_x", "w_y", "w_z",          # angular rate (rad/s)
-                "u_1", "u_2", "u_3", "u_4",   # thrust for rotors
-            ]
-        ].to_numpy()
+                torch.clip(self.cur_pos_error * self.obs_scales["rel_pos"], -1, 1),
+                self.genesis_env.drone.odom.body_quat,
+                torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
+                torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
+                self.last_actions,
+            ],
+            axis=-1,
+        )
 
-        # ensure min distance >= 1cm
-        (
-            self.track_timestamps,
-            self.track_points,
-            self.track_vel,
-            self.track_quat,
-            self.track_rate,
-            self.track_thrust,
-        ) = self.ensure_min_distance(track_data, 0.0)
-        self.track_tangent = self.calculate_tangent_vectors()  # get track tangent vectors
+
+

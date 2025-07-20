@@ -6,12 +6,11 @@ def g_decay(x, alpha):
     return x * alpha + x.detach() * (1 - alpha)
 
 class Model(nn.Module):
-    def __init__(self, config_path):
+    def __init__(self, config):
         super().__init__()
-        with open(config_path, "r") as file:
-            config = yaml.load(file, Loader=yaml.FullLoader)
-        self.obs_dim = config.get("obs_dim", 9)         # angle, anglular rate, linear acceleration
-        self.output_dim = config.get("output_dim", 4)   
+        self.config = config
+        self.obs_dim = self.config.get("obs_dim", 9)         # angle, anglular rate, linear acceleration
+        self.output_dim = self.config.get("output_dim", 4)   
         
         self.stem = nn.Sequential(
             nn.Conv2d(1, 32, 2, 2, bias=False),  # 1, 12, 16 -> 32, 6, 8

@@ -10,7 +10,7 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       },
-      "python": "~/miniconda3/envs/RING-env/bin/python"
+      "python": "/home/nyf/miniconda3/envs/RING-env/bin/python"
     }
   ]
 }

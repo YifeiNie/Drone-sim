@@ -50,12 +50,26 @@ pos:
 pid_exec_freq: 60
 base_rpm: 70000.0
 use_RC: True
-
-# unit is grams
-weight: 500.0     
-
+weight: 500.0    # unit is grams 
 inertia_matrix:
   - [0.005, 0.0,   0.0,  0.0]
   - [0.0,   0.005, 0.0,  0.0]
   - [0.0,   0.0,   0.009,0.0]
   - [0.0,   0.0,   0.0,  1.0]
+
+# =========== mavlink_param =============
+USB_path: "/dev/ttyUSB0"
+baudrate: 2000000
+
+ARM:       "ch5"
+ANGLE:     "ch6"
+OFFBOARD:  "ch8"
+YAW:       "ch3" 
+PITCH:     "ch2"
+ROLL:      "ch1"
+THRUTTLE:  "ch4"   
+
+# =========== odom_param =============
+gyro_update_freq: 8000
+att_update_freq: 100
+acc_update_freqL: 1000
