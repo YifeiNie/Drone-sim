@@ -258,10 +258,10 @@ class GenesisLidar:
         # vertices = np.array(vertices, dtype=np.float32)
         # faces = np.array(faces, dtype=np.int32)
         # 保存顶点
-        np.savetxt("~/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/vertices.txt", vertices, fmt="%.6f")  # 保存为浮点数
+        np.savetxt("/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/vertices.txt", vertices, fmt="%.6f")  # 保存为浮点数
 
         # 保存面片索引
-        np.savetxt("~/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/faces.txt", faces, fmt="%d")          # 保存为整数索引
+        np.savetxt("/home/nyf/Genesis-Drones/Genesis-Drones/scene/3d_gen_py/faces.txt", faces, fmt="%d")          # 保存为整数索引
         vertex_tensor = torch.tensor( 
                 vertices,
                 device=self.device,

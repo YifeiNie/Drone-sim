@@ -1,3 +1,0 @@
-gyro_update_freq: 8000
-att_update_freq: 100
-acc_update_freqL: 1000

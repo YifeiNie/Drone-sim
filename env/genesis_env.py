@@ -1,11 +1,10 @@
 import torch
 import math
 import time
-import yaml
 import types
 import genesis as gs
 from flight.pid import PIDcontroller
-from flight.imu_sim import IMU_sim
+from flight.odom import Odom
 
 
 from sensors.genesis_lidar import GenesisLidar
@@ -19,16 +18,13 @@ from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transfor
 import numpy as np
 
 class Genesis_env :
-    def __init__(self, num_envs, yaml_path, drone, device = torch.device("cuda")):
-
-        with open(yaml_path, "r") as file:
-            self.config = yaml.load(file, Loader = yaml.FullLoader)
-        self.device = device
-        self.num_envs = num_envs
-        self.rendered_env_num = min(10, self.num_envs)
+    def __init__(self, config):
+        self.config = config
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.num_envs = config.get("num_envs", 1)
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
-        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(num_envs, -1)
-
+        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
+        self.rendered_env_num = min(10, self.num_envs)
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -57,18 +53,22 @@ class Genesis_env :
 
         # add entity in map
         self.map.add_trees_to_scene(scene = self.scene)
-        
+
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
+        drone_path = config.get("drone_path", "urdf/cf2x.urdf")
+        drone = gs.morphs.Drone(file=drone_path, pos=(0.0, 0.0, 0.0))
         self.drone = self.scene.add_entity(drone)
+
+        # set viewer
         # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
         setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), num_envs=self.num_envs))     
         
-        # add imu for drone
+        # add odom for drone
         self.set_drone_imu()
 
         # add controller for drone
@@ -78,35 +78,30 @@ class Genesis_env :
         self.set_drone_camera()
 
         # build world
-        self.scene.build(n_envs = num_envs)
+        self.scene.build(n_envs = self.num_envs)
+        self.drone_init_pos = self.drone.get_pos()
+        self.drone_init_quat = self.drone.get_quat()
 
         # add lidar
         self.set_drone_lidar()
 
-    def sim_step(self): 
+    def step(self, action=0): 
         self.scene.step()
-
         # self.update_entity_dis_list()
-
         # self.drone.lidar.step()
-
         self.drone.cam.set_FPV_cam_pos()
-
         self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
-
-        self.drone.controller.step()
-
+        self.drone.controller.step(action)
         self.get_aabb_list()
-
+        # self.reset()
 
     def set_drone_imu(self):
-        imu = IMU_sim(
+        odom = Odom(
             num_envs = self.config.get("num_envs", 1),
-            yaml_path = "config/flight/imu_sim_param.yaml",
             device = torch.device("cuda")
         )
-        imu.set_drone(self.drone)
-        setattr(self.drone, 'imu', imu) 
+        odom.set_drone(self.drone)
+        setattr(self.drone, 'odom', odom) 
         
     def set_drone_lidar(self):
         lidar = GenesisLidar(
@@ -133,7 +128,7 @@ class Genesis_env :
         def set_FPV_cam_pos(self):
             self.cam.set_pose(
             transform = trans_quat_to_T(trans = self.get_pos(), 
-                                        quat = transform_quat_by_quat(self.cam.cam_quat, self.imu.body_quat))[0].cpu().numpy()
+                                        quat = transform_quat_by_quat(self.cam.cam_quat, self.odom.body_quat))[0].cpu().numpy()
         )
         setattr(cam, 'cam_quat', self.cam_quat)  
         setattr(cam, 'set_FPV_cam_pos', types.MethodType(set_FPV_cam_pos, self.drone))
@@ -146,8 +141,8 @@ class Genesis_env :
         pid = PIDcontroller(
             num_envs = self.config.get("num_envs", 1), 
             rc_command = rc_command,
-            imu_sim = self.drone.imu, 
-            yaml_path = "config/flight/pid_param.yaml",
+            odom = self.drone.odom, 
+            yaml_path = "config/sim_env/flight.yaml",
             device = torch.device("cuda")
         )
         pid.set_drone(self.drone)
@@ -189,5 +184,15 @@ class Genesis_env :
             aabb_list.append(entity.get_AABB())
         return aabb_list
 
+    def reset(self, env_idx=None):
+        if env_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = env_idx
 
-
+        self.drone.set_pos(self.drone_init_pos, reset_range)
+        self.drone.set_quat(self.drone_init_quat,reset_range)
+        self.drone.odom.reset(reset_range)
+        self.drone.controller.reset(reset_range)
+        self.drone.odom.odom_update()
+        self.drone.zero_all_dofs_velocity(reset_range)

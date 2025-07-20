@@ -9,11 +9,11 @@ class ForestEnv:
     def __init__(self, min_tree_dis, width, length):
         
         # remember to modify the file path
-        self.strings = ["~/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
-                        "~/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
+        self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
+                        "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
         
-        self.strings_convex = ["~/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
-                               "~/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
+        self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
+                               "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
         self.weights = [0.65, 0.35]
 
         if len(self.strings) != len(self.weights):
@@ -84,7 +84,7 @@ class ForestEnv:
             pitch = math.radians(random.uniform(0, 30))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
-                file="~/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
+                file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
                 pos=(x-0.5, y-1.5, 0.0),
                 euler=(
                     90 + math.degrees(roll),  # roll
@@ -101,7 +101,7 @@ class ForestEnv:
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                use_3rd_file="~/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
+                use_3rd_file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
             )        
 
             entity = scene.add_entity(morph)

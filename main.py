@@ -1,33 +1,53 @@
 
 
-
-
+import shutil
+import os
 import yaml
 import torch
 from flight.pid import PIDcontroller
-from flight.imu_sim import IMU_sim
+from flight.odom import Odom
 from flight.mavlink_sim import rc_command
 from env.genesis_env import Genesis_env
 from flight.mavlink_sim import start_mavlink_receive_thread
+from learning.rl.tasks.track_task import Track_task
+from rsl_rl.runners import OnPolicyRunner
 import time
+from datetime import datetime
 import genesis as gs
 import warp as wp
 
 def main():
     gs.init()
-    with open("config/flight/env.yaml", "r") as file:
-        config = yaml.load(file, Loader=yaml.FullLoader)
 
-    genesis_env = Genesis_env(
-        num_envs = config.get("num_envs", 1),
-        yaml_path = "config/flight/env.yaml",
-        drone = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0)),
-        device = torch.device("cuda")
-    )
 
-    start_mavlink_receive_thread()
+    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    log_dir = os.path.join(current_dir, f"logs/track_task_{timestamp}")
+    if os.path.exists(log_dir):
+        shutil.rmtree(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
+
+
+    with open("config/sim_env/env.yaml", "r") as file:
+        env_config = yaml.load(file, Loader=yaml.FullLoader)
+    with open("config/rl_task/track_task.yaml", "r") as file:
+        task_config = yaml.load(file, Loader=yaml.FullLoader)
+    with open("config/rl_task/track_train.yaml", "r") as file:
+        train_config = yaml.load(file, Loader=yaml.FullLoader)
+
+
+    genesis_env = Genesis_env(config=env_config)
+    track_task = Track_task(genesis_env, env_config, task_config)
+    runner = OnPolicyRunner(track_task, train_config, log_dir, device="cuda:0")
+
+    device = "/dev/ttyUSB0"
+    if not os.path.exists(device):
+        print(f"[MAVLINK] Device {device} not found, skipping mavlink thread.")
+    else :
+        start_mavlink_receive_thread(device)
+
     while True:
-        genesis_env.sim_step()
+        genesis_env.step()
 
 if __name__ == "__main__" :
     wp.config.enable_backward_log = True

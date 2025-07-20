@@ -9,7 +9,7 @@ import numpy as np
 # ----------- 基本配置 -----------
 name = "tree_7"   # 要处理的模型文件夹 / obj 文件前缀
 base_dir = (
-    "~/Genesis-Drones/Genesis-Drones/scene/entity_src/"
+    "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/"
     "gazebo-vegetation/gazebo_vegetation/models/"
 )
 input_file  = f"{base_dir}{name}/meshes/{name}.obj"
