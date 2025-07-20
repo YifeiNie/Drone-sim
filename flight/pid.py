@@ -80,7 +80,7 @@ class PIDcontroller:
 
 
     def mixer(self, action=0) -> torch.Tensor:
-        throttle = torch.clamp(self.rc_command["throttle"] + action[-1], 0, 1) * self.base_rpm * 3
+        throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1], 0, 1) * self.base_rpm * 0.3
         motor_outputs = torch.stack([
             throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
             throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
@@ -100,17 +100,18 @@ class PIDcontroller:
 
     def step(self, action=0):
         self.odom.odom_update()
-        if(self.rc_command["ARM"] == 0):
-            self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
-            return
+        # if(self.rc_command["ARM"] == 0):
+        #     self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
+        #     return
         self.pid_update_TpaFactor()
-        if self.rc_command["ANGLE"] == 0:         # angle mode
-            self.angle_controller(action)
-        elif self.rc_command["ANGLE"] == 1:       # angle rate mode
-            self.rate_controller(action)
-        else:                                     # undifined
-            print("undifined mode, do nothing!!")
-            return
+        self.angle_controller(action)
+        # if self.rc_command["ANGLE"] == 0:         # angle mode
+        #     self.angle_controller(action)
+        # elif self.rc_command["ANGLE"] == 1:       # angle rate mode
+        #     self.rate_controller(action)
+        # else:                                     # undifined
+        #     print("undifined mode, do nothing!!")
+        #     return
         self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=0): 
@@ -119,10 +120,12 @@ class PIDcontroller:
 
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
-
-        self.body_set_point[:] = action[:, :-1] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
+        if action.ndim == 0:
+            self.body_set_point[:] = torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)
+        else:
+            self.body_set_point[:] = action[:, :3] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
+        
         cur_angle_rate_error = self.body_set_point * 10 - self.odom.body_ang_vel
-
         self.P_term_r[:] = (cur_angle_rate_error * self.kp_r) * self.tpa_factor
         self.I_term_r[:] = self.I_term_r + cur_angle_rate_error * self.ki_r
         self.D_term_r[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_r * self.tpa_factor    
@@ -136,7 +139,10 @@ class PIDcontroller:
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         action = torch.as_tensor(action, dtype=gs.tc_float)
-        self.body_set_point[:] = -self.odom.body_euler + action
+        if action.ndim == 0:
+            self.body_set_point[:] = -self.odom.body_euler 
+        else:
+            self.body_set_point[:] = -self.odom.body_euler + action[:, :3]
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         cur_angle_rate_error = (self.body_set_point * 10 - self.odom.body_ang_vel)
 
@@ -167,31 +173,31 @@ class PIDcontroller:
         else:
             reset_range = env_idx
         # Reset the PID terms (P, I, D, F)
-        self.P_term_a[reset_range] = torch.zeros_like(self.P_term_a)
-        self.I_term_a[reset_range] = torch.zeros_like(self.I_term_a)
-        self.D_term_a[reset_range] = torch.zeros_like(self.D_term_a)
-        self.F_term_a[reset_range] = torch.zeros_like(self.F_term_a)
+        self.P_term_a.index_fill_(0, reset_range, 0.0)
+        self.I_term_a.index_fill_(0, reset_range, 0.0)
+        self.D_term_a.index_fill_(0, reset_range, 0.0)
+        self.F_term_a.index_fill_(0, reset_range, 0.0)
 
-        self.P_term_r[reset_range] = torch.zeros_like(self.P_term_r)
-        self.I_term_r[reset_range] = torch.zeros_like(self.I_term_r)
-        self.D_term_r[reset_range] = torch.zeros_like(self.D_term_r)
-        self.F_term_r[reset_range] = torch.zeros_like(self.F_term_r)
+        self.P_term_r.index_fill_(0, reset_range, 0.0)
+        self.I_term_r.index_fill_(0, reset_range, 0.0)
+        self.D_term_r.index_fill_(0, reset_range, 0.0)
+        self.F_term_r.index_fill_(0, reset_range, 0.0)
 
-        self.P_term_p[reset_range] = torch.zeros_like(self.P_term_p)
-        self.I_term_p[reset_range] = torch.zeros_like(self.I_term_p)
-        self.D_term_p[reset_range] = torch.zeros_like(self.D_term_p)
-        self.F_term_p[reset_range] = torch.zeros_like(self.F_term_p)
+        self.P_term_p.index_fill_(0, reset_range, 0.0)
+        self.I_term_p.index_fill_(0, reset_range, 0.0)
+        self.D_term_p.index_fill_(0, reset_range, 0.0)
+        self.F_term_p.index_fill_(0, reset_range, 0.0)
 
         # Reset the angle, position, and velocity errors
-        self.angle_rate_error[reset_range] = torch.zeros_like(self.angle_rate_error)
-        self.angle_error[reset_range] = torch.zeros_like(self.angle_error)
+        self.angle_rate_error.index_fill_(0, reset_range, 0.0)
+        self.angle_error.index_fill_(0, reset_range, 0.0)
 
         # Reset the body set points and pid output
-        self.body_set_point[reset_range] = torch.zeros_like(self.body_set_point)
-        self.pid_output[reset_range] = torch.zeros_like(self.pid_output)
+        self.body_set_point.index_fill_(0, reset_range, 0.0)
+        self.pid_output.index_fill_(0, reset_range, 0.0)
 
         # Reset the last angular velocity
-        self.last_body_ang_vel[reset_range] = torch.zeros_like(self.last_body_ang_vel)
+        self.last_body_ang_vel.index_fill_(0, reset_range, 0.0)
 
         # Reset the TPA factor and rate
         self.tpa_factor = 1

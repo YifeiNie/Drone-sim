@@ -52,7 +52,7 @@ class Genesis_env :
         )
 
         # add entity in map
-        self.map.add_trees_to_scene(scene = self.scene)
+        # self.map.add_trees_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
@@ -77,20 +77,38 @@ class Genesis_env :
         # add drone camera
         self.set_drone_camera()
 
+        # add target
+        if self.config["vis_waypoints"]:
+            self.target = self.scene.add_entity(
+                morph=gs.morphs.Mesh(
+                    file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/sphere/sphere.obj",
+                    scale=0.03,
+                    fixed=False,
+                    collision=False,
+                ),
+                surface=gs.surfaces.Rough(
+                    diffuse_texture=gs.textures.ColorTexture(
+                        color=(1.0, 0.5, 0.5),
+                    ),
+                ),
+            )
+        else:
+            self.target = None
+
         # build world
         self.scene.build(n_envs = self.num_envs)
         self.drone_init_pos = self.drone.get_pos()
         self.drone_init_quat = self.drone.get_quat()
 
         # add lidar
-        self.set_drone_lidar()
+        # self.set_drone_lidar()
 
     def step(self, action=0): 
         self.scene.step()
         # self.update_entity_dis_list()
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
-        self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
+        # self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
         self.get_aabb_list()
         # self.reset()
@@ -179,19 +197,21 @@ class Genesis_env :
         """
         aabb_list = []
         for entity in self.scene.entities:
-            if (entity.idx == self.plane.idx):
+            if (entity.idx == self.plane.idx or entity.idx == self.target.idx):
                 continue
             aabb_list.append(entity.get_AABB())
         return aabb_list
 
     def reset(self, env_idx=None):
+        if len(env_idx) == 0:
+            return
         if env_idx is None:
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:
-            reset_range = env_idx
+            reset_range = env_idx    
 
-        self.drone.set_pos(self.drone_init_pos, reset_range)
-        self.drone.set_quat(self.drone_init_quat,reset_range)
+        self.drone.set_pos(self.drone_init_pos[reset_range], envs_idx=reset_range)
+        self.drone.set_quat(self.drone_init_quat[reset_range], envs_idx=reset_range)
         self.drone.odom.reset(reset_range)
         self.drone.controller.reset(reset_range)
         self.drone.odom.odom_update()
