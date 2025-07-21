@@ -12,7 +12,7 @@ ang:
 
   kp_y: 2000.0
   ki_y: 0.0
-  kd_y: 0.2
+  kd_y: 0.0
   kf_y: 0.0
 
 rat:
@@ -28,7 +28,7 @@ rat:
 
   kp_y: 2000.0
   ki_y: 0.0
-  kd_y: 0.2
+  kd_y: 0.0
   kf_y: 0.0
 
 pos:
@@ -44,11 +44,11 @@ pos:
 
   kp_t: 2000.0
   ki_t: 0.0
-  kd_t: 0.2
+  kd_t: 0.0
   kf_t: 0.0
 
 pid_exec_freq: 60
-base_rpm: 70000.0
+base_rpm: 8468.429183500699
 use_RC: True
 weight: 500.0    # unit is grams 
 inertia_matrix:

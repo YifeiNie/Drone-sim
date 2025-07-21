@@ -17,8 +17,10 @@ class Odom:
         self.body_linear_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.body_linear_acc = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)        
         self.body_ang_vel = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
-        self.body_quat = torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float)
-        self.body_quat_inv = torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float)
+        identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device, dtype=gs.tc_float)
+        self.body_quat = identity_quat.unsqueeze(0).repeat(self.num_envs, 1)
+        self.body_quat_inv = identity_quat.unsqueeze(0).repeat(self.num_envs, 1)
+
         self.last_body_linear_vel = torch.zeros_like(self.body_linear_vel)    # used to cal acc
 
         # global data
@@ -32,26 +34,13 @@ class Odom:
         self.last_world_linear_vel = torch.zeros_like(self.body_linear_vel)
         self.last_time = time.perf_counter()
 
-        # for Betaflight, abort!
-        # gyro_sample_freq = 8kHz, gyro_filtered_freq = gyro_sample_freq / pid_process_denom = 4kHz
-        # acc_sample_freq = 1kHz, acc_target_freq = acc_sample_freq / pid_process_denom = = 500Hz
-        # attitude estimate freq = 100Hz / imu_process_denom
-        # pid_process_denom can found by "get pid_process_denom" in cli in Betaflight configrator
-        # imu_process_denom can found by "get imu_process_denom" in cli in Betaflight configrator
-        
-        # self.gyro_update_freq = config.get("gyro_update_freq", 8000)   # default are the same as Betaflight, aborted!
-        # self.acc_update_freq = config.get("acc_update_freq", 1000)  
-        # self.att_update_freq = config.get("att_update_freq", 100)
-       
-        # self.gyro_update_dT = 1 / self.gyro_update_freq
-        # self.acc_update_dT = 1 / self.acc_update_freq
-        # self.att_update_dT = 1 / self.att_update_freq
-
     def set_drone(self, drone):
         self.drone = drone
 
     def cal_cur_quat(self):
         self.body_quat[:] = self.drone.get_quat()
+        if(torch.isnan(self.body_quat).any()):
+            print("get_quat NaN:", torch.isnan(self.body_quat).any(), self.body_quat)
         self.body_quat_inv[:] = inv_quat(self.body_quat)
 
     def gyro_update(self):
@@ -93,8 +82,10 @@ class Odom:
         self.body_linear_vel.index_fill_(0, reset_range, 0.0)
         self.body_linear_acc.index_fill_(0, reset_range, 0.0)
         self.body_ang_vel.index_fill_(0, reset_range, 0.0)
-        self.body_quat.index_fill_(0, reset_range, 0.0)
-        self.body_quat_inv.index_fill_(0, reset_range, 0.0)
+        identity_quat = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device, dtype=gs.tc_float)
+        self.body_quat[reset_range] = identity_quat.unsqueeze(0).repeat(len(reset_range), 1)
+        self.body_quat_inv[reset_range] = identity_quat.unsqueeze(0).repeat(len(reset_range), 1)
+
         self.last_body_linear_vel.index_fill_(0, reset_range, 0.0)
 
         # Reset global data to zero

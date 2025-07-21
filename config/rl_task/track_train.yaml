@@ -21,7 +21,7 @@ policy:
   activation: tanh 
   actor_hidden_dims: [128, 128] 
   critic_hidden_dims: [128, 128] 
-  init_noise_std: 1.0 
+  init_noise_std: 10.0 
 
 runner: 
   algorithm_class_name: PPO 

@@ -62,6 +62,7 @@ class Track_task(VecEnv):
 
     def _reward_target(self):
         target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
+        target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
         return target_reward
 
     def _reward_smooth(self):
@@ -83,6 +84,17 @@ class Track_task(VecEnv):
         crash_reward[self.crash_condition] = 1
         return crash_reward
     
+    def _reward_lazy(self):
+        lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        
+        # 获取 z 轴小于 0.1 的条件
+        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
+        
+        # 计算 lazy_reward，满足条件的环境奖励为 self.episode_length_buf / self.max_episode_length
+        lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
+        
+        return lazy_reward
+        
     def _resample_commands(self, envs_idx):
         self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
         self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
@@ -99,10 +111,12 @@ class Track_task(VecEnv):
         return at_target
 
     def step(self, action):
-
+        self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
+        exec_actions = self.actions
+        
         if self.genesis_env.target is not None:
             self.genesis_env.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
-        self.genesis_env.step(action)
+        self.genesis_env.step(exec_actions)
         self.episode_length_buf += 1
         self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
         self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
@@ -112,12 +126,14 @@ class Track_task(VecEnv):
             | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
-            | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
+            # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
         self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
-        self._resample_commands(self._at_target())
         self.compute_reward()
+        self.last_actions[:] = self.actions[:]
+        self._resample_commands(self._at_target())
+        
         self._update_obs()
 
         return self.get_observations(), None, self.reward_buf, self.reset_buf, self.extras
@@ -151,7 +167,7 @@ class Track_task(VecEnv):
     def _update_obs(self):
         def check_nan(name, tensor):
             if torch.isnan(tensor).any():
-                print(f"⚠️ [NaN DETECTED] {name} 有 NaN！")
+                print(f"⚠️ [NaN DETECTED] {name} has NaN！")
 
         check_nan("cur_pos_error", self.cur_pos_error)
         check_nan("body_quat", self.genesis_env.drone.odom.body_quat)
@@ -159,7 +175,6 @@ class Track_task(VecEnv):
         check_nan("body_ang_vel", self.genesis_env.drone.odom.body_ang_vel)
         check_nan("last_actions", self.last_actions)
 
-        # ========== 原始 obs 拼接逻辑 ========== #
         self.obs_buf = torch.cat(
             [
                 torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
