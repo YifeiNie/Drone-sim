@@ -24,7 +24,7 @@ class Genesis_env :
         self.num_envs = config.get("num_envs", 1)
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
-        self.rendered_env_num = min(10, self.num_envs)
+        self.rendered_env_num = min(3, self.num_envs)
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -61,7 +61,7 @@ class Genesis_env :
         drone_path = config.get("drone_path", "urdf/cf2x.urdf")
         drone = gs.morphs.Drone(file=drone_path, pos=(0.0, 0.0, 0.0))
         self.drone = self.scene.add_entity(drone)
-
+        
         # set viewer
         # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
@@ -99,6 +99,7 @@ class Genesis_env :
         self.scene.build(n_envs = self.num_envs)
         self.drone_init_pos = self.drone.get_pos()
         self.drone_init_quat = self.drone.get_quat()
+        self.drone.set_dofs_damping(torch.tensor([0.0, 0.0, 0.0, 1e-4, 1e-4, 1e-4]))  # Set damping to a small value to avoid numerical instability
 
         # add lidar
         # self.set_drone_lidar()
@@ -211,8 +212,9 @@ class Genesis_env :
             reset_range = env_idx    
 
         self.drone.set_pos(self.drone_init_pos[reset_range], envs_idx=reset_range)
+        self.drone.zero_all_dofs_velocity(reset_range)
         self.drone.set_quat(self.drone_init_quat[reset_range], envs_idx=reset_range)
         self.drone.odom.reset(reset_range)
         self.drone.controller.reset(reset_range)
         self.drone.odom.odom_update()
-        self.drone.zero_all_dofs_velocity(reset_range)
+        
