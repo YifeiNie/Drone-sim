@@ -58,7 +58,7 @@ class Genesis_env :
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="urdf/cf2x.urdf", pos=(0.0, 0.0, 0.0))
+        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.0))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -103,7 +103,7 @@ class Genesis_env :
         # add lidar
         # self.set_drone_lidar()
 
-    def step(self, action=0): 
+    def step(self, action=torch.tensor(0.0)): 
         self.scene.step()
         # self.update_entity_dis_list()
         # self.drone.lidar.step()
