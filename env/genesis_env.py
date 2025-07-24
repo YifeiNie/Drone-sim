@@ -34,7 +34,10 @@ class Genesis_env :
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
             ),
-            vis_options = gs.options.VisOptions(rendered_envs_idx = list(range(self.rendered_env_num))),
+            vis_options = gs.options.VisOptions(
+                rendered_envs_idx = list(range(self.rendered_env_num)),
+                env_separate_rigid=False,
+            ),
             rigid_options = gs.options.RigidOptions(
                 dt = self.dt,
                 constraint_solver = gs.constraint_solver.Newton,
@@ -103,7 +106,7 @@ class Genesis_env :
         # add lidar
         # self.set_drone_lidar()
 
-    def step(self, action=torch.tensor(0.0)): 
+    def step(self, action=None): 
         self.scene.step()
         # self.update_entity_dis_list()
         # self.drone.lidar.step()

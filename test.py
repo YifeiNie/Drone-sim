@@ -10,8 +10,42 @@ from flight.odom import Odom
 from flight.mavlink_sim import rc_command
 from utils.heapq_ import MultiEntityList
 from env import map
-from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
+from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat, quat_to_R
 import numpy as np
+from torch import nn
+from torch.nn import functional as F
+
+class Model(nn.Module):
+    def __init__(self, dim_obs=10, dim_action=6) -> None:
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(1, 32, 2, 2, bias=False),  # 1, 12, 16 -> 32, 6, 8
+            nn.LeakyReLU(0.05),
+            nn.Conv2d(32, 64, 3, bias=False), #  32, 6, 8 -> 64, 4, 6
+            nn.LeakyReLU(0.05),
+            nn.Conv2d(64, 128, 3, bias=False), #  64, 4, 6 -> 128, 2, 4
+            nn.LeakyReLU(0.05),
+            nn.Flatten(),
+            nn.Linear(128*2*4, 192, bias=False),
+        )
+        self.v_proj = nn.Linear(dim_obs, 192)
+        self.v_proj.weight.data.mul_(0.5)
+
+        self.gru = nn.GRUCell(192, 192)
+        self.fc = nn.Linear(192, dim_action, bias=False)
+        self.fc.weight.data.mul_(0.01)
+        self.act = nn.LeakyReLU(0.05)
+
+    def reset(self):
+        pass
+
+    def forward(self, x: torch.Tensor, v, hx=None):
+        img_feat = self.stem(x)
+        x = self.act(img_feat + self.v_proj(v))
+        hx = self.gru(x, hx)
+        act = self.fc(self.act(hx))
+        return act, None, hx
+
 
 class Genesis_env :
     def __init__(self, config):
@@ -21,16 +55,21 @@ class Genesis_env :
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         self.rendered_env_num = min(3, self.num_envs)
+        self.p_target = torch.tensor([[3, 1, 1]], device=self.device)
+        self.margin = torch.rand((self.num_envs, ), device=self.device) * 0.2 + 0.1
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
             viewer_options = gs.options.ViewerOptions(
-                max_FPS = self.config.get("max_vis_FPS", 60),
+                max_FPS = self.config.get("max_vis_FPS", 15),
                 camera_pos = (-3.0, 0.0, 3.0),
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
             ),
-            vis_options = gs.options.VisOptions(rendered_envs_idx = list(range(self.rendered_env_num))),
+            vis_options = gs.options.VisOptions(
+                rendered_envs_idx = list(range(self.rendered_env_num)),
+                env_separate_rigid=True,
+            ),
             rigid_options = gs.options.RigidOptions(
                 dt = self.dt,
                 constraint_solver = gs.constraint_solver.Newton,
@@ -43,8 +82,8 @@ class Genesis_env :
         # creat map
         self.map = map.ForestEnv(
             min_tree_dis = 1.4, 
-            width = 3, 
-            length = 3
+            width = 5, 
+            length = 5
         )
 
         # add entity in map
@@ -97,13 +136,13 @@ class Genesis_env :
         self.drone.set_dofs_damping(torch.tensor([0.0, 0.0, 0.0, 1e-4, 1e-4, 1e-4]))  # Set damping to a small value to avoid numerical instability
 
 
-    def step(self, action=torch.tensor(0.0)): 
+    def step(self, action=None): 
         self.scene.step()
 
         self.drone.cam.set_FPV_cam_pos()
-        # self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
+        _,self.drone.cam.depth,_,_ = self.drone.cam.render(rgb=True, depth=True)   # [1] is idx of depth img
         self.drone.controller.step(action)
-        self.get_aabb_list()
+        print(self.drone.cam.depth.shape)
 
     def set_drone_imu(self):
         odom = Odom(
@@ -116,7 +155,7 @@ class Genesis_env :
     def set_drone_camera(self):
         if (self.config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
-                res=(640, 480),
+                res=(64, 48),
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=30,
@@ -145,41 +184,6 @@ class Genesis_env :
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)      
 
-    def update_entity_dis_list(self):
-        cur_pos = self.drone.get_pos()
-        for key, tree in self.map.tree_entity_list.items():
-            min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
-            self.drone.entity_dis_list.update(key, min_dis)
-
-    def vis_verts(self):
-        all_verts = []
-        entity_list = [e for e in self.scene.entities if e.idx not in [self.drone.idx, self.plane.idx]]
-        for entity in entity_list:
-            pos = entity.get_pos()
-            quat = entity.get_quat()
-            for link in entity.links:
-                for geom in link.geoms:
-                    verts = torch.tensor(geom.mesh.verts, dtype=torch.float32, device=quat.device)
-                    verts = transform_by_trans_quat(verts, pos, quat)
-                    all_verts.append(verts.detach().cpu().numpy())
-        self.scene.draw_debug_spheres(
-            poss=np.vstack(all_verts),
-            radius=0.02,
-        )
-
-    def get_aabb_list(self):
-        """
-        Get a set of bounding box vertices of occupations
-
-        :param: none
-        :return: list(torch.tensor(num_envs, 2, 3))
-        """
-        aabb_list = []
-        for entity in self.scene.entities:
-            if (entity.idx == self.plane.idx or entity.idx == self.target.idx):
-                continue
-            aabb_list.append(entity.get_AABB())
-        return aabb_list
 
     def reset(self, env_idx=None):
         if len(env_idx) == 0:
@@ -196,12 +200,49 @@ class Genesis_env :
         self.drone.controller.reset(reset_range)
         self.drone.odom.odom_update()
         
+def model_process(model, env):
+    num_envs = env.num_envs
+    R = quat_to_R(env.drone.odom.body_quat)
+    
+    fwd = R[:, :, 0].clone()
+    up = torch.zeros_like(fwd)
+    fwd[:, 2] = 0
+    up[:, 2] = 1
+    fwd = F.normalize(fwd, 2, -1)
+    R = torch.stack([fwd, torch.cross(up, fwd), up], -1)
+
+    target_v_raw = env.p_target - env.drone.odom.world_pos.detach()    # tensor(num_envs, 3）
+    target_v_norm = torch.norm(target_v_raw, 2, -1, keepdim=True)
+    target_v_unit = target_v_raw / target_v_norm
+    target_v = target_v_unit * torch.minimum(target_v_norm, torch.tensor([[1.3]]))    # max speed
+    state = [
+        torch.squeeze(target_v[:, None] @ R, 1),
+        R[:, 2],
+        env.margin[:, None]]
+    local_v = torch.squeeze(env.drone.odom.world_linear_vel[:, None] @ R, 1)
+    state.insert(0, local_v)
+    state = torch.cat(state, -1)
+    
+    dep = torch.from_numpy(env.drone.cam.depth)
+    x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
+    x = F.max_pool2d(x[:, None], 4, 4)
+    h = None
+    act, values, h = model(x.to("cuda"), state, h)
+    print(act)
+
+
 if __name__ == "__main__" :
     print("begin!")
-    gs.init(logging_level="warning")
-    with open("config/sim_env/env.yaml", "r") as file:
+    gs.init()
+    with open("config/sim_env/env_eval.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-
+    model = Model()
+    model.to("cuda")
+    model.load_state_dict(torch.load("/home/nyf/Genesis-Drones/Genesis-Drones/eval/run1/checkpoint0004.pth", map_location='cuda'))
+    model.eval()
     genesis_env = Genesis_env(config=env_config)
+
+
     while True:
         genesis_env.step()
+        model_process(model, genesis_env)

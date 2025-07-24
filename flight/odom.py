@@ -44,19 +44,19 @@ class Odom:
         self.body_quat_inv[:] = inv_quat(self.body_quat)
 
     def gyro_update(self):
-        self.cal_cur_quat()    # since gyro_update has the highest freq
+        self.cal_cur_quat()    
         cur_ang_vel = self.drone.get_ang()      # (roll, pitch, yaw)
         self.body_ang_vel[:] = cur_ang_vel
         self.world_ang_vel[:] = transform_by_quat(cur_ang_vel, self.body_quat_inv)
 
     def acc_update(self, dT):
         self.last_body_linear_vel[:] = self.body_linear_vel
-        body_linear_vel_temp = self.drone.get_vel()
-        self.body_linear_vel[:] = body_linear_vel_temp
-        self.world_linear_vel[:] = transform_by_quat(body_linear_vel_temp, self.body_quat_inv)
+        world_linear_vel_temp = self.drone.get_vel()
+        self.world_linear_vel[:] = world_linear_vel_temp
+        self.body_linear_vel[:] = transform_by_quat(world_linear_vel_temp, self.body_quat_inv)
 
         self.body_linear_acc[:] = (self.body_linear_vel - self.last_body_linear_vel) / dT
-        self.world_linear_acc[:] = transform_by_quat(self.body_linear_acc, self.body_quat_inv)
+        self.world_linear_acc[:] = transform_by_quat(self.body_linear_acc, self.body_quat)
 
     def att_update(self):
         self.body_euler[:] = quat_to_xyz(self.body_quat, rpy=True)

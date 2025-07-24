@@ -5,7 +5,7 @@
       "name": "Python: Conda 调试 main.py",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/track_train.py",
+      "program": "${workspaceFolder}/test.py",
       "console": "integratedTerminal",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"

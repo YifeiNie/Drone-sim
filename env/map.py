@@ -79,7 +79,7 @@ class ForestEnv:
             tree_file = self.strings[idx]
             tree_file_for_collision = self.strings_convex[idx]
 
-            scale = random.uniform(0.8, 1.3)
+            scale = random.uniform(0.6, 1.5)
             roll = math.radians(random.uniform(0, 30))
             pitch = math.radians(random.uniform(0, 30))
             yaw = math.radians(random.uniform(0, 360))
@@ -91,7 +91,7 @@ class ForestEnv:
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.02, scale*0.02, scale*0.02),
+                scale=(scale*0.05, scale*0.04, scale*0.04),
                 collision=True,
                 convexify=False,
                 decimate=False,
@@ -101,7 +101,7 @@ class ForestEnv:
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                use_3rd_file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
+                # use_3rd_file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
             )        
 
             entity = scene.add_entity(morph)
