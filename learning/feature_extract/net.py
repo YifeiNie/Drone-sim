@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.obs_dim = self.config.get("obs_dim", 9)         # angle, anglular rate, linear acceleration
+        self.input_dim = self.config.get("input_dim", 9)         # angle, anglular rate, linear acceleration
         self.output_dim = self.config.get("output_dim", 4)   
         
         self.stem = nn.Sequential(
