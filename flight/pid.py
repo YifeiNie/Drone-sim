@@ -79,8 +79,11 @@ class PIDcontroller:
         self.drone = drone
 
 
-    def mixer(self, action=torch.tensor(0.0)) -> torch.Tensor:
-        throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1]*0.4, 0, 1) * self.base_rpm * 3
+    def mixer(self, action=None) -> torch.Tensor:
+        if action is None:
+            throttle = np.clip(self.rc_command["throttle"], 0, 1) * self.base_rpm * 3
+        else:
+            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1]*0.4, 0, 1) * self.base_rpm * 3
         self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 3, self.base_rpm * 3)
         motor_outputs = torch.stack([
             throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
@@ -99,7 +102,7 @@ class PIDcontroller:
                 self.tpa_rate = 0.0
             self.tpa_factor = 1.0 - self.tpa_rate
 
-    def step(self, action=torch.tensor(0.0)):
+    def step(self, action=None):
         self.odom.odom_update()
         # if(self.rc_command["ARM"] == 0):
         #     self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
@@ -115,13 +118,13 @@ class PIDcontroller:
         #     return
         self.drone.set_propellels_rpm(self.mixer(action))
 
-    def rate_controller(self, action=torch.tensor(0.0)): 
+    def rate_controller(self, action=None): 
         """
         Anglular rate controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
 
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
-        if action.ndim == 0:
+        if action is None:
             self.body_set_point[:] = torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)
         else:
             self.body_set_point[:] = action[:, :3] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
@@ -133,14 +136,13 @@ class PIDcontroller:
         self.last_body_ang_vel[:] = self.odom.body_ang_vel
         self.pid_output[:] = (self.P_term_r + self.I_term_r + self.D_term_r)
 
-    def angle_controller(self, action=torch.tensor(0.0)):  
+    def angle_controller(self, action=None):  
         """
         Angle controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
 
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
-        action = torch.as_tensor(action, dtype=gs.tc_float)
-        if action.ndim == 0:
+        if action is None:
             self.body_set_point[:] = -self.odom.body_euler 
         else:
             self.body_set_point[:] = -self.odom.body_euler + action[:, :3]
