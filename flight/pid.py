@@ -79,7 +79,7 @@ class PIDcontroller:
         self.drone = drone
 
 
-    def mixer(self, action=0) -> torch.Tensor:
+    def mixer(self, action=torch.tensor(0.0)) -> torch.Tensor:
         throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1]*0.4, 0, 1) * self.base_rpm * 3
         self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 3, self.base_rpm * 3)
         motor_outputs = torch.stack([
@@ -99,7 +99,7 @@ class PIDcontroller:
                 self.tpa_rate = 0.0
             self.tpa_factor = 1.0 - self.tpa_rate
 
-    def step(self, action=0):
+    def step(self, action=torch.tensor(0.0)):
         self.odom.odom_update()
         # if(self.rc_command["ARM"] == 0):
         #     self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
@@ -115,7 +115,7 @@ class PIDcontroller:
         #     return
         self.drone.set_propellels_rpm(self.mixer(action))
 
-    def rate_controller(self, action=0): 
+    def rate_controller(self, action=torch.tensor(0.0)): 
         """
         Anglular rate controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
 
@@ -133,7 +133,7 @@ class PIDcontroller:
         self.last_body_ang_vel[:] = self.odom.body_ang_vel
         self.pid_output[:] = (self.P_term_r + self.I_term_r + self.D_term_r)
 
-    def angle_controller(self, action=0):  
+    def angle_controller(self, action=torch.tensor(0.0)):  
         """
         Angle controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
 
