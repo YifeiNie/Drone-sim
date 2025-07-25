@@ -79,7 +79,7 @@ class ForestEnv:
             tree_file = self.strings[idx]
             tree_file_for_collision = self.strings_convex[idx]
 
-            scale = random.uniform(0.6, 1.5)
+            scale = random.uniform(0.6, 1.3)
             roll = math.radians(random.uniform(0, 30))
             pitch = math.radians(random.uniform(0, 30))
             yaw = math.radians(random.uniform(0, 360))
@@ -91,8 +91,8 @@ class ForestEnv:
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.05, scale*0.04, scale*0.04),
-                collision=True,
+                scale=(scale*0.03, scale*0.03, scale*0.03),
+                collision=False,
                 convexify=False,
                 decimate=False,
                 requires_jac_and_IK=False,
