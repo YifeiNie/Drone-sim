@@ -55,7 +55,7 @@ class Genesis_env :
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         self.rendered_env_num = min(3, self.num_envs)
-        self.p_target = torch.tensor([[3, 0, 2]], device=self.device)
+        self.p_target = torch.tensor([[3, 0, 1]], device=self.device)
         # self.margin = torch.rand((self.num_envs, ), device=self.device) * 0.2 + 0.1
         self.margin = torch.zeros((self.num_envs,), device=self.device )
         # create scene
@@ -198,7 +198,7 @@ class Genesis_env :
         self.drone.controller.reset(reset_range)
         self.drone.odom.odom_update()
         
-def model_process(model, env):
+def model_process(model, env, h):
     num_envs = env.num_envs
     R_ = quat_to_R(env.drone.odom.body_quat)
     
@@ -225,7 +225,6 @@ def model_process(model, env):
     dep = torch.abs(dep - 255)
     x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
     x = F.max_pool2d(x[:, None], 4, 4)
-    h = None
     act, values, h = model(x.to("cuda"), state, h)
     act[:, :3] = torch.bmm(act[:, :3].unsqueeze(1), R.transpose(1, 2)).squeeze(1)
 
@@ -234,12 +233,12 @@ def model_process(model, env):
 
 def acc_to_ctbr(act, num_envs=1):
     action = torch.zeros(num_envs, 4)
-    # action[:, 2] = -torch.atan2(act[:, 1], act[:, 0])      # yaw
+    action[:, 2] = -torch.atan2(act[:, 1], act[:, 0])      # yaw
     action[:, 1] = act[:, 0]* 0.5                              # pitch
-    # action[:, 0] = act[:, 1]                             # roll
-    action[:, -1] = -act[:, 2]                               # thr
-    # action = torch.tanh(action)
-    # action[:, -1] = (action[:, -1] + 1)
+    action[:, 0] = act[:, 1]* 0.5                             # roll
+    action[:, -1] = -act[:, 2]                            # thr
+    action = torch.tanh(action)
+    action[:, -1] = (action[:, -1] + 1)
     return action
 
 
@@ -257,16 +256,16 @@ if __name__ == "__main__" :
     genesis_env.step()
     start_time = time.time()
     print("ready!")
+    h = None
     while True:
-        act, val, _ = model_process(model, genesis_env)
+        act, val, h = model_process(model, genesis_env, h)
         action = acc_to_ctbr(act)
         print(action)
-        print(genesis_env.drone.get_pos())
         genesis_env.step(action)
 
         current_time = time.time()
-        if current_time - start_time >= 4.5:
-            print(f"Executed for {4.5} seconds, resetting.")
+        if current_time - start_time >= 10.5:
+            print(f"Executed for {10.5} seconds, resetting.")
             genesis_env.reset()
 
             start_time = time.time()  
