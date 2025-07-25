@@ -55,8 +55,9 @@ class Genesis_env :
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         self.rendered_env_num = min(3, self.num_envs)
-        self.p_target = torch.tensor([[3, 1, 1]], device=self.device)
-        self.margin = torch.rand((self.num_envs, ), device=self.device) * 0.2 + 0.1
+        self.p_target = torch.tensor([[3, 0, 2]], device=self.device)
+        # self.margin = torch.rand((self.num_envs, ), device=self.device) * 0.2 + 0.1
+        self.margin = torch.zeros((self.num_envs,), device=self.device )
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -81,19 +82,19 @@ class Genesis_env :
 
         # creat map
         self.map = map.ForestEnv(
-            min_tree_dis = 1.4, 
+            min_tree_dis = 1.5, 
             width = 5, 
             length = 5
         )
 
         # add entity in map
-        # self.map.add_trees_to_scene(scene = self.scene)
+        self.map.add_trees_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.0))
+        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(-2.5, 0.0, 0.0))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -142,7 +143,6 @@ class Genesis_env :
         self.drone.cam.set_FPV_cam_pos()
         _,self.drone.cam.depth,_,_ = self.drone.cam.render(rgb=True, depth=True)   # [1] is idx of depth img
         self.drone.controller.step(action)
-        print(self.drone.cam.depth.shape)
 
     def set_drone_imu(self):
         odom = Odom(
@@ -186,8 +186,6 @@ class Genesis_env :
 
 
     def reset(self, env_idx=None):
-        if len(env_idx) == 0:
-            return
         if env_idx is None:
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:
@@ -202,9 +200,9 @@ class Genesis_env :
         
 def model_process(model, env):
     num_envs = env.num_envs
-    R = quat_to_R(env.drone.odom.body_quat)
+    R_ = quat_to_R(env.drone.odom.body_quat)
     
-    fwd = R[:, :, 0].clone()
+    fwd = R_[:, :, 0].clone()
     up = torch.zeros_like(fwd)
     fwd[:, 2] = 0
     up[:, 2] = 1
@@ -214,7 +212,7 @@ def model_process(model, env):
     target_v_raw = env.p_target - env.drone.odom.world_pos.detach()    # tensor(num_envs, 3）
     target_v_norm = torch.norm(target_v_raw, 2, -1, keepdim=True)
     target_v_unit = target_v_raw / target_v_norm
-    target_v = target_v_unit * torch.minimum(target_v_norm, torch.tensor([[1.3]]))    # max speed
+    target_v = target_v_unit * torch.minimum(target_v_norm, torch.tensor([[0.5]]))    # max speed
     state = [
         torch.squeeze(target_v[:, None] @ R, 1),
         R[:, 2],
@@ -224,16 +222,30 @@ def model_process(model, env):
     state = torch.cat(state, -1)
     
     dep = torch.from_numpy(env.drone.cam.depth)
+    dep = torch.abs(dep - 255)
     x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
     x = F.max_pool2d(x[:, None], 4, 4)
     h = None
     act, values, h = model(x.to("cuda"), state, h)
-    print(act)
+    act[:, :3] = torch.bmm(act[:, :3].unsqueeze(1), R.transpose(1, 2)).squeeze(1)
+
+    # print(act)
+    return act, values, h
+
+def acc_to_ctbr(act, num_envs=1):
+    action = torch.zeros(num_envs, 4)
+    # action[:, 2] = -torch.atan2(act[:, 1], act[:, 0])      # yaw
+    action[:, 1] = act[:, 0]* 0.5                              # pitch
+    # action[:, 0] = act[:, 1]                             # roll
+    action[:, -1] = -act[:, 2]                               # thr
+    # action = torch.tanh(action)
+    # action[:, -1] = (action[:, -1] + 1)
+    return action
 
 
 if __name__ == "__main__" :
-    print("begin!")
-    gs.init()
+    print("loading...")
+    gs.init(logging_level="warning")
     with open("config/sim_env/env_eval.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
@@ -241,8 +253,21 @@ if __name__ == "__main__" :
     model.load_state_dict(torch.load("/home/nyf/Genesis-Drones/Genesis-Drones/eval/run1/checkpoint0004.pth", map_location='cuda'))
     model.eval()
     genesis_env = Genesis_env(config=env_config)
-
-
+    genesis_env.step()      # avoid depth image None
+    genesis_env.step()
+    start_time = time.time()
+    print("ready!")
     while True:
-        genesis_env.step()
-        model_process(model, genesis_env)
+        act, val, _ = model_process(model, genesis_env)
+        action = acc_to_ctbr(act)
+        print(action)
+        print(genesis_env.drone.get_pos())
+        genesis_env.step(action)
+
+        current_time = time.time()
+        if current_time - start_time >= 4.5:
+            print(f"Executed for {4.5} seconds, resetting.")
+            genesis_env.reset()
+
+            start_time = time.time()  
+        
