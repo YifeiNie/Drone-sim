@@ -7,7 +7,7 @@ algorithm:
   entropy_coef: 0.004 
   gamma: 0.99 
   lam: 0.95 
-  learning_rate: 0.0003 
+  learning_rate: 0.0004 
   max_grad_norm: 1.0 
   num_learning_epochs: 5 
   num_mini_batches: 4 
@@ -30,7 +30,7 @@ runner:
   load_run: -1 
   log_interval: 1 
   max_iterations: 500 
-  num_steps_per_env: 100 
+  num_steps_per_env: 200 
   policy_class_name: ActorCritic 
   record_interval: -1 
   resume: False 
