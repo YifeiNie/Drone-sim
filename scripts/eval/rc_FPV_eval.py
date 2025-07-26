@@ -28,13 +28,13 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
 
-    with open("../../config/sim_env/env.yaml", "r") as file:
+    with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/rl_task/track_task.yaml", "r") as file:
+    with open("config/rl_task/track_task.yaml", "r") as file:
         task_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/rl_task/track_train.yaml", "r") as file:
+    with open("config/rl_task/track_train.yaml", "r") as file:
         train_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/sim_env/flight.yaml", "r") as file:
+    with open("config/sim_env/flight.yaml", "r") as file:
         controller_config = yaml.load(file, Loader=yaml.FullLoader)
 
 

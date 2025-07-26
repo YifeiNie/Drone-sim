@@ -56,7 +56,7 @@ class Genesis_env :
         self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         self.rendered_env_num = min(3, self.num_envs)
-        self.p_target = torch.tensor([[3, 0, 1]], device=self.device)
+        self.p_target = torch.tensor([[3, 0, 1.5]], device=self.device)
         # self.margin = torch.rand((self.num_envs, ), device=self.device) * 0.2 + 0.1
         self.margin = torch.zeros((self.num_envs,), device=self.device )
         # create scene
@@ -83,7 +83,7 @@ class Genesis_env :
 
         # creat map
         self.map = map.ForestEnv(
-            min_tree_dis = 1.5, 
+            min_tree_dis = 1.7, 
             width = 5, 
             length = 5
         )
@@ -99,7 +99,7 @@ class Genesis_env :
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
-        self.scene.viewer.follow_entity(self.drone)  # follow drone
+        # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
         setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), num_envs=self.num_envs))     
@@ -117,7 +117,7 @@ class Genesis_env :
         if self.config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/sphere/sphere.obj",
+                    file="../../scene/entity_src/sphere/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,
@@ -245,7 +245,8 @@ def acc_to_ctbr(act, num_envs=1):
 
 if __name__ == "__main__" :
     print("loading...")
-    gs.init(logging_level="warning")
+    # logging_level="warning"
+    gs.init()
     with open("../../config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     with open("../../config/sim_env/flight.yaml", "r") as file:
