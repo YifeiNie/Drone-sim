@@ -48,7 +48,8 @@ class Model(nn.Module):
 
 
 class Genesis_env :
-    def __init__(self, config):
+    def __init__(self, config, controller_config):
+        self.controller_config = controller_config
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_envs = config.get("num_envs", 1)
@@ -175,10 +176,10 @@ class Genesis_env :
 
     def set_drone_controller(self):
         pid = PIDcontroller(
+            config = self.controller_config,
             num_envs = self.config.get("num_envs", 1), 
             rc_command = rc_command,
             odom = self.drone.odom, 
-            yaml_path = "config/sim_env/flight.yaml",
             device = torch.device("cuda")
         )
         pid.set_drone(self.drone)
@@ -234,8 +235,8 @@ def model_process(model, env, h):
 def acc_to_ctbr(act, num_envs=1):
     action = torch.zeros(num_envs, 4)
     action[:, 2] = -torch.atan2(act[:, 1], act[:, 0])      # yaw
-    action[:, 1] = act[:, 0]* 0.7                              # pitch
-    action[:, 0] = act[:, 1]* 0.7                             # roll
+    action[:, 1] = act[:, 0]* 0.5                              # pitch
+    action[:, 0] = act[:, 1]* 0.5                             # roll
     action[:, -1] = -act[:, 2]                            # thr
     action = torch.tanh(action)
     action[:, -1] = (action[:, -1] + 1)*1.2
@@ -245,13 +246,15 @@ def acc_to_ctbr(act, num_envs=1):
 if __name__ == "__main__" :
     print("loading...")
     gs.init(logging_level="warning")
-    with open("config/sim_env/env_eval.yaml", "r") as file:
+    with open("../../config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
+    with open("../../config/sim_env/flight.yaml", "r") as file:
+        controller_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
     model.to("cuda")
-    model.load_state_dict(torch.load("/home/nyf/Genesis-Drones/Genesis-Drones/eval/run1/checkpoint0004.pth", map_location='cuda'))
+    model.load_state_dict(torch.load("/home/nyf/Genesis-Drones/Genesis-Drones/logs/back2nt/checkpoint0004.pth", map_location='cuda'))
     model.eval()
-    genesis_env = Genesis_env(config=env_config)
+    genesis_env = Genesis_env(config=env_config, controller_config=controller_config)
     genesis_env.step()      # avoid depth image None
     genesis_env.step()
     start_time = time.time()

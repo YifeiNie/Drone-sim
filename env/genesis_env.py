@@ -18,18 +18,20 @@ from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transfor
 import numpy as np
 
 class Genesis_env :
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, env_config, controller_config):
+        self.env_config = env_config
+        self.controller_config = controller_config
+
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.num_envs = config.get("num_envs", 1)
-        self.dt = self.config.get("dt", 0.01)           # default sim env update in 100hz
-        self.cam_quat = torch.tensor(self.config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
+        self.num_envs = self.env_config.get("num_envs", 1)
+        self.dt = self.env_config.get("dt", 0.01)           # default sim env update in 100hz
+        self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         self.rendered_env_num = min(3, self.num_envs)
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
             viewer_options = gs.options.ViewerOptions(
-                max_FPS = self.config.get("max_vis_FPS", 60),
+                max_FPS = self.env_config.get("max_vis_FPS", 60),
                 camera_pos = (-3.0, 0.0, 3.0),
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
@@ -68,7 +70,7 @@ class Genesis_env :
         # self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
-        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), num_envs=self.num_envs))     
+        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.env_config.get("max_dis_num", 5), num_envs=self.num_envs))     
         
         # add odom for drone
         self.set_drone_imu()
@@ -80,7 +82,7 @@ class Genesis_env :
         self.set_drone_camera()
 
         # add target
-        if self.config["vis_waypoints"]:
+        if self.env_config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
                     file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/sphere/sphere.obj",
@@ -118,7 +120,7 @@ class Genesis_env :
 
     def set_drone_imu(self):
         odom = Odom(
-            num_envs = self.config.get("num_envs", 1),
+            num_envs = self.env_config.get("num_envs", 1),
             device = torch.device("cuda")
         )
         odom.set_drone(self.drone)
@@ -137,7 +139,7 @@ class Genesis_env :
         setattr(self.drone, 'lidar', lidar)
 
     def set_drone_camera(self):
-        if (self.config.get("use_FPV_camera", False)):
+        if (self.env_config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
                 res=(640, 480),
                 pos=(-3.5, 0.0, 2.5),
@@ -159,10 +161,10 @@ class Genesis_env :
 
     def set_drone_controller(self):
         pid = PIDcontroller(
-            num_envs = self.config.get("num_envs", 1), 
+            num_envs = self.env_config.get("num_envs", 1), 
             rc_command = rc_command,
             odom = self.drone.odom, 
-            yaml_path = "config/sim_env/flight.yaml",
+            config = self.controller_config,
             device = torch.device("cuda")
         )
         pid.set_drone(self.drone)
