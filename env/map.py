@@ -91,8 +91,8 @@ class ForestEnv:
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.03, scale*0.03, scale*0.03),
-                collision=False,
+                scale=(scale*0.04, scale*0.04, scale*0.04),
+                collision=True,
                 convexify=False,
                 decimate=False,
                 requires_jac_and_IK=False,

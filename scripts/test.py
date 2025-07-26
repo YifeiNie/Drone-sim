@@ -98,7 +98,7 @@ class Genesis_env :
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
-        # self.scene.viewer.follow_entity(self.drone)  # follow drone
+        self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
         setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.config.get("max_dis_num", 5), num_envs=self.num_envs))     
@@ -234,11 +234,11 @@ def model_process(model, env, h):
 def acc_to_ctbr(act, num_envs=1):
     action = torch.zeros(num_envs, 4)
     action[:, 2] = -torch.atan2(act[:, 1], act[:, 0])      # yaw
-    action[:, 1] = act[:, 0]* 0.5                              # pitch
-    action[:, 0] = act[:, 1]* 0.5                             # roll
+    action[:, 1] = act[:, 0]* 0.7                              # pitch
+    action[:, 0] = act[:, 1]* 0.7                             # roll
     action[:, -1] = -act[:, 2]                            # thr
     action = torch.tanh(action)
-    action[:, -1] = (action[:, -1] + 1)
+    action[:, -1] = (action[:, -1] + 1)*1.2
     return action
 
 
@@ -264,8 +264,8 @@ if __name__ == "__main__" :
         genesis_env.step(action)
 
         current_time = time.time()
-        if current_time - start_time >= 10.5:
-            print(f"Executed for {10.5} seconds, resetting.")
+        if current_time - start_time >= 3.5:
+            print(f"Executed for {3.5} seconds, resetting.")
             genesis_env.reset()
 
             start_time = time.time()  
