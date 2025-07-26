@@ -22,7 +22,7 @@ def main():
 
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = os.path.join(current_dir, f"logs/track_task_{timestamp}")
+    log_dir = os.path.join(current_dir, f"logs/rsl_track/track_task_{timestamp}")
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
