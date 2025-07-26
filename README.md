@@ -14,12 +14,11 @@
 - run demo by `python main.py`
 - use FC to control the sim drone by `python scripts/eval/back2nt_eval.py`
 
-#### An tracking RL Task
+#### An tracking RL task
 - config in `config/rl_task`
 - `python scripts/train/track_rsl.py` 
 
 #### An obstacle avoidance task
-- config in `config/rl_task`
 - `python scripts/eval/back2nt_eval.py` 
 
 ### Reference
