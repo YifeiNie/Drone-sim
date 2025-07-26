@@ -1,8 +1,3 @@
-## Quick start
-
-### Prepare a FCU
-
-
 ### Run demos
 - make sure your PC has one GPU at least
 - enter your conda env
@@ -27,10 +22,7 @@
 - config in `config/rl_task`
 - `python scripts/eval/back2nt_eval.py` 
 
-### Note
-- for the urdf file, see `./urdf` 
-
-### Ref
+### Reference
 - [gazebo-vegetation](https://github.com/kubja/gazebo-vegetation)
 - [OmniPerception](https://github.com/aCodeDog/OmniPerception)
 - [rsl-rl](https://github.com/leggedrobotics/rsl_rl.git)
