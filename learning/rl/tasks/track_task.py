@@ -85,11 +85,7 @@ class Track_task(VecEnv):
     
     def _reward_lazy(self):
         lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        
-        # 获取 z 轴小于 0.1 的条件
         condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
-        
-        # 计算 lazy_reward，满足条件的环境奖励为 self.episode_length_buf / self.max_episode_length
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
         
         return lazy_reward
