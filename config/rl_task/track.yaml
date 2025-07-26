@@ -1,0 +1,75 @@
+
+task:
+  yaw_lambda: -10.0 
+  reward_scales:
+    target: 10.0 
+    smooth: -0.0001 
+    yaw: 0.01 
+    angular: -0.0002
+    crash: -10.0 
+    lazy: -1
+
+  termination_if_roll_greater_than: 180   # degree
+  termination_if_pitch_greater_than: 180 
+  termination_if_close_to_ground: 0.1 
+  termination_if_x_greater_than: 3.0 
+  termination_if_y_greater_than: 3.0 
+  termination_if_z_greater_than: 2.0 
+
+  clip_actions: 1.0 
+  target_thr: 0.1
+  episode_length_s: 15.0 
+  max_episode_length: 1500
+  num_actions: 4                  # roll, pitch, yaw, thrust
+  num_commands: 3                 # 3d position: x, y, z
+  num_obs: 17                     # pos*3, quat*4, vel*3, ang_rate*3, last_actiopn*4 
+  obs_scales:
+    cur_pos_error: 0.3333333333333333   # 1 / 3.0 
+    lin_vel: 0.3333333333333333   # 1 / 3.0 
+    ang_vel: 0.3183098861837907   # 1 / 3.14159 
+
+
+
+train:
+  # All the settings for training the model are defined here
+  algorithm: 
+    clip_param: 0.2 
+    desired_kl: 0.01 
+    entropy_coef: 0.004 
+    gamma: 0.99 
+    lam: 0.95 
+    learning_rate: 0.0003 
+    max_grad_norm: 1.0 
+    num_learning_epochs: 5 
+    num_mini_batches: 4 
+    schedule: adaptive 
+    use_clipped_value_loss: True 
+    value_loss_coef: 1.0 
+          
+  init_member_classes: {}
+
+  policy: 
+    activation: tanh 
+    actor_hidden_dims: [128, 128] 
+    critic_hidden_dims: [128, 128] 
+    init_noise_std: 10.0 
+
+  runner: 
+    algorithm_class_name: PPO 
+    checkpoint: -1 
+    experiment_name: drone-hovering
+    load_run: -1 
+    log_interval: 1 
+    max_iterations: 500 
+    num_steps_per_env: 100 
+    policy_class_name: ActorCritic 
+    record_interval: -1 
+    resume: False 
+    resume_path: null
+    run_name:  
+    runner_class_name: runner_class_name 
+    save_interval: 100 
+
+  runner_class_name: OnPolicyRunner 
+  seed: 1 
+

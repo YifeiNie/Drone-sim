@@ -7,7 +7,6 @@ import pandas as pd
 from typing import Any
 import types
 from .base import VecEnv
-from tensordict import TensorDict
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
