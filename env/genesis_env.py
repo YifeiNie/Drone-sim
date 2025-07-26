@@ -134,7 +134,6 @@ class Genesis_env :
             sensor_type=LidarType.MID360,
             visualization_mode='spheres'
         )
-        # def set_lidar_pos(self):
         setattr(self.drone, 'lidar', lidar)
 
     def set_drone_camera(self):

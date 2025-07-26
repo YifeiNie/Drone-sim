@@ -8,9 +8,9 @@ readme = "README.md"
 repository = "https://github.com/YifeiNie/Drone-sim"
 packages = [
     { include = "flight" }, 
-    { include = "flight" },
-    { include = "flight" } 
-    { include = "flight" }
+    { include = "sensors" },
+    { include = "env" },
+    { include = "learning" }
 ]
 
 [tool.poetry.dependencies]
