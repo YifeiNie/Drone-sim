@@ -117,7 +117,7 @@ class Genesis_env :
         if self.config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="../../scene/entity_src/sphere/sphere.obj",
+                    file="scene/entity_src/sphere/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,
@@ -247,9 +247,9 @@ if __name__ == "__main__" :
     print("loading...")
     # logging_level="warning"
     gs.init()
-    with open("../../config/sim_env/env.yaml", "r") as file:
+    with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/sim_env/flight.yaml", "r") as file:
+    with open("config/sim_env/flight.yaml", "r") as file:
         controller_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
     model.to("cuda")
