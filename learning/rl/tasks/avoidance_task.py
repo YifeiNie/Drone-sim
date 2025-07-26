@@ -1,0 +1,217 @@
+
+import genesis as gs
+import numpy as np
+import torch
+import yaml
+import pandas as pd
+from typing import Any
+import types
+from rl.tasks.base import VecEnv
+from feature_extract.depth_net import Depth_Model
+from rsl_rl.modules.actor_critic import ActorCritic
+
+
+
+class CNNActorCritic(ActorCritic):
+    def __init__(self,
+                 num_actor_obs,
+                 num_critic_obs,
+                 num_actions,
+                 cnn_input_channels=3,
+                 cnn_output_dim=256,
+                 **kwargs):
+        
+        # 先构造 CNN 特征提取器
+        super().__init__(cnn_output_dim, cnn_output_dim, num_actions, **kwargs)
+        self.cnn = Depth_Model(state_dim=10, output_dim=128)
+
+    def act(self, observations, **kwargs):
+        # 假设输入是图像 (B, C, H, W)
+        features = self.cnn(observations)
+        return super().act(features, **kwargs)
+
+    def evaluate(self, critic_observations, **kwargs):
+        features = self.cnn(critic_observations)
+        return super().evaluate(features, **kwargs)
+
+    def act_inference(self, observations):
+        features = self.cnn(observations)
+        return super().act_inference(features)
+
+
+
+
+
+
+
+def gs_rand_float(lower, upper, shape, device):
+    return (upper - lower) * torch.rand(size=shape, device=device) + lower
+
+
+class Avoid_task(VecEnv):
+    def __init__(self, genesis_env, env_config, task_config):
+        # configs
+        self.genesis_env = genesis_env
+        self.env_config = env_config
+        self.task_config = task_config
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        # nums
+        self.num_envs = self.env_config.get("num_envs", 1)
+        self.num_actions = task_config["num_actions"]
+        self.num_commands = task_config["num_commands"]
+        self.num_obs = task_config["num_obs"]
+        self.num_privileged_obs = None      # used for VecEnv
+
+        # parameters
+        self.max_episode_length = self.task_config.get("max_episode_length", 1500)
+        self.reward_scales = task_config.get("reward_scales", {})
+        self.obs_scales = task_config.get("obs_scales", {})
+        self.command_cfg = self.env_config.get("command_cfg", {})
+        self.step_dt = self.env_config.get("dt", 0.01)
+
+        # buffers
+        self.obs_buf = torch.zeros((self.num_envs, self.num_obs), device=self.device, dtype=gs.tc_float)
+        self.reward_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        self.reset_buf = torch.ones((self.num_envs,), device=self.device, dtype=gs.tc_int)
+        self.episode_length_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_int)
+        self.command_buf = torch.zeros((self.num_envs, self.num_commands), device=self.device, dtype=gs.tc_float)
+        self.crash_condition = torch.ones((self.num_envs,), device=self.device, dtype=bool)
+        self.cur_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
+        self.last_actions = torch.zeros_like(self.actions)
+
+        self.reward_functions = dict()
+        self.episode_reward_sums = dict()
+        self.extras = dict()  # extra information for logging
+
+        self._register_reward_fun()
+
+    def compute_reward(self):
+        self.reward_buf[:] = 0.0
+        for name, reward_func in self.reward_functions.items():
+            reward = reward_func() * self.reward_scales[name]
+            self.reward_buf += reward
+            self.episode_reward_sums[name] += reward
+
+    def _reward_target(self):
+        target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
+        target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
+        return target_reward
+
+    def _reward_smooth(self):
+        smooth_reward = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
+        return smooth_reward
+
+    def _reward_yaw(self):
+        yaw = self.genesis_env.drone.odom.body_euler[:, 2]
+        yaw = torch.where(yaw > 180, yaw - 360, yaw) / 180 * 3.14159  # use rad for yaw_reward
+        yaw_reward = torch.exp(self.task_config["yaw_lambda"] * torch.abs(yaw))
+        return yaw_reward
+
+    def _reward_angular(self):
+        angular_reward = torch.norm(self.genesis_env.drone.odom.body_ang_vel / 3.14159, dim=1)
+        return angular_reward
+
+    def _reward_crash(self):
+        crash_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        crash_reward[self.crash_condition] = 1
+        return crash_reward
+    
+    def _reward_lazy(self):
+        lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        
+        # 获取 z 轴小于 0.1 的条件
+        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
+        
+        # 计算 lazy_reward，满足条件的环境奖励为 self.episode_length_buf / self.max_episode_length
+        lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
+        
+        return lazy_reward
+        
+    def _resample_commands(self, envs_idx):
+        self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(envs_idx),), self.device)
+
+    def _register_reward_fun(self):
+        for name in self.reward_scales.keys():
+            self.reward_scales[name] *= self.step_dt
+            self.reward_functions[name] = getattr(self, "_reward_" + name)
+            self.episode_reward_sums[name] = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+
+    def _at_target(self):
+        at_target = ((torch.norm(self.cur_pos_error, dim=1) < self.task_config["target_thr"]).nonzero(as_tuple=False).flatten())
+        return at_target
+
+    def step(self, action):
+        self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
+        exec_actions = self.actions
+        
+        if self.genesis_env.target is not None:
+            self.genesis_env.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
+        self.genesis_env.step(exec_actions)
+        self.episode_length_buf += 1
+        self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
+        self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
+        self.crash_condition = (
+            (torch.abs(self.genesis_env.drone.odom.body_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
+            | (torch.abs(self.genesis_env.drone.odom.body_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
+            | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
+            # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
+        )
+        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
+        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
+        self.compute_reward()
+        self.last_actions[:] = self.actions[:]
+        self._resample_commands(self._at_target())
+        
+        self._update_obs()
+
+        return self.get_observations(), None, self.reward_buf, self.reset_buf, self.extras
+
+
+    def reset(self, env_idx=None):
+        if env_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = env_idx
+
+        self.genesis_env.reset(reset_range)
+        self.last_actions[reset_range] = 0.0
+        self.episode_length_buf[reset_range] = 0
+        self.reset_buf[reset_range] = True
+
+        self.extras["episode"] = {}
+        for key in self.episode_reward_sums.keys():
+            self.extras["episode"]["rew_" + key] = (
+                torch.mean(self.episode_reward_sums[key][reset_range]).item() / self.task_config["episode_length_s"]
+            )
+            self.episode_reward_sums[key][reset_range] = 0.0
+        self._resample_commands(reset_range)
+        return self.obs_buf, None
+
+    def get_observations(self):
+        obs = self.obs_buf
+        return obs
+        # return TensorDict({"obs": obs}, batch_size=[self.num_envs])
+
+    def _update_obs(self):
+
+        self.obs_buf = torch.cat(
+            [
+                torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
+                self.genesis_env.drone.odom.body_quat,
+                torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
+                torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
+                self.last_actions,
+            ],
+            axis=-1,
+        )
+
+    def get_privileged_observations(self):
+        return None
+

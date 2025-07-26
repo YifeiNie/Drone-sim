@@ -31,12 +31,15 @@ def main():
 
     with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/rl_task/track_task.yaml", "r") as file:
-        task_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/rl_task/track_train.yaml", "r") as file:
-        train_config = yaml.load(file, Loader=yaml.FullLoader)
+
+    with open("config/rl_task/track.yaml", "r") as file:
+        rl_config = yaml.load(file, Loader=yaml.FullLoader)
+
     with open("config/sim_env/flight.yaml", "r") as file:
         controller_config = yaml.load(file, Loader=yaml.FullLoader)
+
+    task_config = rl_config["task"]
+    train_config = rl_config["train"]
 
 
     genesis_env = Genesis_env(

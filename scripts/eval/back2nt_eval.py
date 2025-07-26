@@ -268,8 +268,8 @@ if __name__ == "__main__" :
         genesis_env.step(action)
 
         current_time = time.time()
-        if current_time - start_time >= 3.5:
-            print(f"Executed for {3.5} seconds, resetting.")
+        if current_time - start_time >= 4:
+            print(f"Executed for {4} seconds, resetting.")
             genesis_env.reset()
 
             start_time = time.time()  

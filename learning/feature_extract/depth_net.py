@@ -5,12 +5,11 @@ import yaml
 def g_decay(x, alpha):
     return x * alpha + x.detach() * (1 - alpha)
 
-class Model(nn.Module):
-    def __init__(self, config):
+class Depth_Model(nn.Module):
+    def __init__(self, state_dim=10, output_dim=128):
         super().__init__()
-        self.config = config
-        self.input_dim = self.config.get("input_dim", 9)         # angle, anglular rate, linear acceleration
-        self.output_dim = self.config.get("output_dim", 4)   
+        self.dim_obs = state_dim         # quat, anglular rate, linear acceleration
+        self.output_dim = output_dim         # ctbr   
         
         self.stem = nn.Sequential(
             nn.Conv2d(1, 32, 2, 2, bias=False),  # 1, 12, 16 -> 32, 6, 8
@@ -38,4 +37,4 @@ class Model(nn.Module):
         x = self.act(img_feat + self.v_proj(v))     
         hx = self.gru(x, hx)
         act = self.fc(self.act(hx))
-        return act, None, hx
+        return act, hx
