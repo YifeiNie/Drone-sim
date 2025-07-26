@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "genesis-drone-controller"
+name = "genesis-drone"
 version = "1.0.3"
 description = "Genesis Drone Environment"
 authors = ["YifeiNie <yifnie@163.com>"]
@@ -10,7 +10,8 @@ packages = [
     { include = "flight" }, 
     { include = "sensors" },
     { include = "env" },
-    { include = "learning" }
+    { include = "learning" },
+    { include = "learning/rl/framework/rsl_rl" }
 ]
 
 [tool.poetry.dependencies]
@@ -20,7 +21,6 @@ torch = ">=1.4.0"
 torchvision = ">=0.5.0" 
 numpy = ">=1.16.4"
 open3d = "*"
-rsl-rl = { git = "https://github.com/leggedrobotics/rsl_rl.git", tag = "v1.0.2" }
 pyserial ="*"
 pymavlink = "*"
 pyyaml = "*"

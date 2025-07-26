@@ -28,16 +28,27 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
 
-    with open("config/sim_env/env.yaml", "r") as file:
+    with open("../../config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/rl_task/track_task.yaml", "r") as file:
+    with open("../../config/rl_task/track_task.yaml", "r") as file:
         task_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/rl_task/track_train.yaml", "r") as file:
+    with open("../../config/rl_task/track_train.yaml", "r") as file:
         train_config = yaml.load(file, Loader=yaml.FullLoader)
+    with open("../../config/sim_env/flight.yaml", "r") as file:
+        controller_config = yaml.load(file, Loader=yaml.FullLoader)
 
 
-    genesis_env = Genesis_env(config=env_config)
-    track_task = Track_task(genesis_env, env_config, task_config)
+    genesis_env = Genesis_env(
+        env_config = env_config, 
+        controller_config = controller_config,
+    )
+
+    track_task = Track_task(
+        genesis_env = genesis_env, 
+        env_config = env_config, 
+        task_config = task_config
+    )
+
     runner = OnPolicyRunner(track_task, train_config, log_dir, device="cuda:0")
     runner.learn(num_learning_iterations=500, init_at_random_ep_len=True)
 

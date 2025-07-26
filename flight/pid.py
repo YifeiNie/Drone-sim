@@ -10,9 +10,8 @@ import numpy as np
 
 
 class PIDcontroller:
-    def __init__(self, num_envs, rc_command, odom, yaml_path, device = torch.device("cuda")):
-        with open(yaml_path, "r") as file:
-            config = yaml.load(file, Loader=yaml.FullLoader)
+    def __init__(self, num_envs, rc_command, odom, config, device = torch.device("cuda")):
+
         self.rc_command = rc_command
         self.device = device
         self.num_envs = num_envs
@@ -104,11 +103,10 @@ class PIDcontroller:
 
     def step(self, action=None):
         self.odom.odom_update()
+        
         # if(self.rc_command["ARM"] == 0):
         #     self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
         #     return
-        self.pid_update_TpaFactor()
-        self.angle_controller(action)
         # if self.rc_command["ANGLE"] == 0:         # angle mode
         #     self.angle_controller(action)
         # elif self.rc_command["ANGLE"] == 1:       # angle rate mode
@@ -116,6 +114,9 @@ class PIDcontroller:
         # else:                                     # undifined
         #     print("undifined mode, do nothing!!")
         #     return
+        # self.pid_update_TpaFactor()
+
+        self.angle_controller(action)
         self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=None): 
