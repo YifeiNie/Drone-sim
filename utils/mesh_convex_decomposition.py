@@ -7,7 +7,7 @@ import open3d as o3d
 import numpy as np
 
 # ----------- 基本配置 -----------
-name = "tree_7"   # 要处理的模型文件夹 / obj 文件前缀
+name = "tree_1"   # 要处理的模型文件夹 / obj 文件前缀
 base_dir = (
     "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/"
     "gazebo-vegetation/gazebo_vegetation/models/"
@@ -30,14 +30,14 @@ o3d.visualization.draw_geometries([origin_vis], window_name="Original Mesh")
 mesh_coacd = coacd.Mesh(mesh.vertices, mesh.faces)
 parts = coacd.run_coacd(
     mesh_coacd,
-    threshold=0.09,
+    threshold=0.12,
     max_convex_hull=-1,
     preprocess_mode="auto",
     preprocess_resolution=50,
     resolution=2000,
     mcts_nodes=20,
     mcts_iterations=100,
-    mcts_max_depth=3,
+    mcts_max_depth=2,
     pca=False,
     merge=True,
     decimate=False,
@@ -45,7 +45,7 @@ parts = coacd.run_coacd(
     extrude=False,
     extrude_margin=0.01,
     apx_mode="ch",
-    seed=0
+    seed=0,
 )
 
 # ----------- 3. 打印并可视化每个凸部件 -----------

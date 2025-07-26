@@ -14,7 +14,7 @@ class ForestEnv:
         
         self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
                                "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
-        self.weights = [0.65, 0.35]
+        self.weights = [0.35, 0.65]
 
         if len(self.strings) != len(self.weights):
             raise ValueError("The length of the string list and weight list is inconsistent")
@@ -80,18 +80,18 @@ class ForestEnv:
             tree_file_for_collision = self.strings_convex[idx]
 
             scale = random.uniform(0.6, 1.3)
-            roll = math.radians(random.uniform(0, 30))
-            pitch = math.radians(random.uniform(0, 30))
+            roll = math.radians(random.uniform(0, 10))
+            pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
                 file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
-                pos=(x-0.5, y-1.5, 0.0),
+                pos=(x-0.5, y-1.5, 1.0),
                 euler=(
                     90 + math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.04, scale*0.04, scale*0.04),
+                scale=(scale*0.03, scale*0.03, scale*0.03),
                 collision=True,
                 convexify=False,
                 decimate=False,

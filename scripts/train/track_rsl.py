@@ -17,7 +17,8 @@ import genesis as gs
 import warp as wp
 
 def main():
-    gs.init(logging_level="warning")
+    # logging_level="warning"
+    gs.init()
 
 
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,13 +29,13 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
 
 
-    with open("../../config/sim_env/env.yaml", "r") as file:
+    with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/rl_task/track_task.yaml", "r") as file:
+    with open("config/rl_task/track_task.yaml", "r") as file:
         task_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/rl_task/track_train.yaml", "r") as file:
+    with open("config/rl_task/track_train.yaml", "r") as file:
         train_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("../../config/sim_env/flight.yaml", "r") as file:
+    with open("config/sim_env/flight.yaml", "r") as file:
         controller_config = yaml.load(file, Loader=yaml.FullLoader)
 
 
