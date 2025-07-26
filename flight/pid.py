@@ -116,7 +116,7 @@ class PIDcontroller:
         #     return
         # self.pid_update_TpaFactor()
 
-        self.angle_controller(action)
+        self.rate_controller(action)
         self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=None): 

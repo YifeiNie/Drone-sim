@@ -18,7 +18,7 @@ import warp as wp
 
 def main():
     # logging_level="warning"
-    gs.init()
+    gs.init(logging_level="warning")
 
 
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
