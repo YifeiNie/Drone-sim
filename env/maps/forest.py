@@ -84,7 +84,7 @@ class ForestEnv:
             pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
-                file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
+                file="assets/entity_src/gate/gate_circle.obj",
                 pos=(x-0.5, y-1.5, 1.0),
                 euler=(
                     90 + math.degrees(roll),  # roll

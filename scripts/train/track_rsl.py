@@ -9,7 +9,7 @@ from flight.odom import Odom
 from flight.mavlink_sim import rc_command
 from env.genesis_env import Genesis_env
 from flight.mavlink_sim import start_mavlink_receive_thread
-from learning.rl.tasks.track_task import Track_task
+from algorithms.rl.tasks.track_task import Track_task
 from rsl_rl.runners import OnPolicyRunner
 import time
 from datetime import datetime
@@ -20,10 +20,8 @@ def main():
     # logging_level="warning"
     gs.init(logging_level="warning")
 
-
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = os.path.join(current_dir, f"../../logs/rsl_track/track_task_{timestamp}")
+    log_dir = f"logs/rsl_track/track_task_{timestamp}"
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)

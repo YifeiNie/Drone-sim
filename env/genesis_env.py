@@ -13,12 +13,19 @@ from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 
 from flight.mavlink_sim import rc_command
 from utils.heapq_ import MultiEntityList
-from . import map
+from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
 import numpy as np
 
 class Genesis_env :
-    def __init__(self, env_config, controller_config):
+    def __init__(
+            self, 
+            env_config, 
+            controller_config,
+            viewer_follow_drone = False,
+            load_map = False, 
+            use_rc = False):
+        self.use_rc = use_rc
         self.env_config = env_config
         self.controller_config = controller_config
 
@@ -50,14 +57,15 @@ class Genesis_env :
         )
 
         # creat map
-        self.map = map.ForestEnv(
+        self.map = ForestEnv(
             min_tree_dis = 1.4, 
             width = 3, 
             length = 3
         )
 
         # add entity in map
-        # self.map.add_trees_to_scene(scene = self.scene)
+        if load_map is True:
+            self.map.add_trees_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
@@ -67,7 +75,8 @@ class Genesis_env :
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
-        # self.scene.viewer.follow_entity(self.drone)  # follow drone
+        if viewer_follow_drone is True:
+            self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
         setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.env_config.get("max_dis_num", 5), num_envs=self.num_envs))     
@@ -85,7 +94,7 @@ class Genesis_env :
         if self.env_config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/sphere/sphere.obj",
+                    file="assets/entity_src/sphere/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,
@@ -113,9 +122,9 @@ class Genesis_env :
         # self.update_entity_dis_list()
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
-        # self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
+        self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
-        self.get_aabb_list()
+        # self.get_aabb_list()
         # self.reset()
 
     def set_drone_imu(self):
@@ -165,7 +174,8 @@ class Genesis_env :
             rc_command = rc_command,
             odom = self.drone.odom, 
             config = self.controller_config,
-            device = torch.device("cuda")
+            device = torch.device("cuda"),
+            use_rc = self.use_rc
         )
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)      

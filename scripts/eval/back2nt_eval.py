@@ -9,7 +9,7 @@ from flight.odom import Odom
 
 from flight.mavlink_sim import rc_command
 from utils.heapq_ import MultiEntityList
-from env import map
+from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat, quat_to_R
 import numpy as np
 from torch import nn
@@ -82,7 +82,7 @@ class Genesis_env :
         )
 
         # creat map
-        self.map = map.ForestEnv(
+        self.map = ForestEnv(
             min_tree_dis = 1.7, 
             width = 5, 
             length = 5
@@ -117,7 +117,7 @@ class Genesis_env :
         if self.config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="scene/entity_src/sphere/sphere.obj",
+                    file="assets/entity_src/sphere/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,
@@ -246,14 +246,14 @@ def acc_to_ctbr(act, num_envs=1):
 if __name__ == "__main__" :
     print("loading...")
     # logging_level="warning"
-    gs.init()
+    gs.init(logging_level="warning")
     with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     with open("config/sim_env/flight.yaml", "r") as file:
         controller_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
     model.to("cuda")
-    model.load_state_dict(torch.load("/home/nyf/Genesis-Drones/Genesis-Drones/logs/back2nt/checkpoint0004.pth", map_location='cuda'))
+    model.load_state_dict(torch.load("logs/back2nt/checkpoint0004.pth", map_location='cuda'))
     model.eval()
     genesis_env = Genesis_env(config=env_config, controller_config=controller_config)
     genesis_env.step()      # avoid depth image None
