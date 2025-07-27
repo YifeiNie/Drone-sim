@@ -9,7 +9,7 @@ from flight.odom import Odom
 from flight.mavlink_sim import rc_command
 from env.genesis_env import Genesis_env
 from flight.mavlink_sim import start_mavlink_receive_thread
-from learning.rl.tasks.track_task import Track_task
+from algorithms.rl.tasks.track_task import Track_task
 from rsl_rl.runners import OnPolicyRunner
 import time
 from datetime import datetime
@@ -37,6 +37,8 @@ def main():
     genesis_env = Genesis_env(
         env_config = env_config, 
         controller_config = controller_config,
+        viewer_follow_drone = True,
+        use_rc = True
     )
 
     device = "/dev/ttyUSB0"

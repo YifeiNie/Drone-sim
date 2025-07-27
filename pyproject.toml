@@ -10,8 +10,8 @@ packages = [
     { include = "flight" }, 
     { include = "sensors" },
     { include = "env" },
-    { include = "learning" },
-    { include = "learning/rl/framework/rsl_rl" }
+    { include = "algorithms" },
+    { include = "rsl_rl", from = "algorithms/rl/rsl_rl" }
 ]
 
 [tool.poetry.dependencies]
