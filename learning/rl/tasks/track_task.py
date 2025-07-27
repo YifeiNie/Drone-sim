@@ -162,7 +162,7 @@ class Track_task(VecEnv):
     def _update_obs(self):
         def check_nan(name, tensor):
             if torch.isnan(tensor).any():
-                print(f"⚠️ [NaN DETECTED] {name} has NaN！")
+                print(f"W[NaN DETECTED] {name} has NaN!")
 
         check_nan("cur_pos_error", self.cur_pos_error)
         check_nan("body_quat", self.genesis_env.drone.odom.body_quat)

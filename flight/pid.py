@@ -59,9 +59,9 @@ class PIDcontroller:
         self.D_term_p = torch.zeros_like(self.P_term_p)
         self.F_term_p = torch.zeros_like(self.P_term_p)                
         
-        self.pid_freq = config.get("pid_exec_freq", 60)     # the same as gyro_update_freq
+        self.pid_freq = config.get("pid_exec_freq", 60)     # no use
         self.base_rpm = config.get("base_rpm", 10000)
-        self.dT = 1 / self.pid_freq
+        self.dT = 1 / self.pid_freq                         # no use
         self.tpa_factor = 1
         self.tpa_rate = 0
 
@@ -82,7 +82,7 @@ class PIDcontroller:
         if action is None:
             throttle = np.clip(self.rc_command["throttle"], 0, 1) * self.base_rpm * 3
         else:
-            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1]*0.4, 0, 1) * self.base_rpm * 3
+            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1] * 0.4, 0, 1) * self.base_rpm * 3
         self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 3, self.base_rpm * 3)
         motor_outputs = torch.stack([
             throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
@@ -116,7 +116,7 @@ class PIDcontroller:
         #     return
         # self.pid_update_TpaFactor()
 
-        self.rate_controller(action)
+        self.angle_controller(action)
         self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=None): 

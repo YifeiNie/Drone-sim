@@ -23,7 +23,7 @@ def main():
 
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = os.path.join(current_dir, f"logs/rsl_track/track_task_{timestamp}")
+    log_dir = os.path.join(current_dir, f"../../logs/rsl_track/track_task_{timestamp}")
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
@@ -54,7 +54,7 @@ def main():
     )
 
     runner = OnPolicyRunner(track_task, train_config, log_dir, device="cuda:0")
-    runner.learn(num_learning_iterations=500, init_at_random_ep_len=True)
+    runner.learn(num_learning_iterations=300, init_at_random_ep_len=True)
 
 if __name__ == "__main__" :
     wp.config.enable_backward_log = True
