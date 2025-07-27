@@ -11,39 +11,6 @@ from feature_extract.depth_net import Depth_Model
 from rsl_rl.modules.actor_critic import ActorCritic
 
 
-
-class CNNActorCritic(ActorCritic):
-    def __init__(self,
-                 num_actor_obs,
-                 num_critic_obs,
-                 num_actions,
-                 cnn_input_channels=3,
-                 cnn_output_dim=256,
-                 **kwargs):
-        
-        # 先构造 CNN 特征提取器
-        super().__init__(cnn_output_dim, cnn_output_dim, num_actions, **kwargs)
-        self.cnn = Depth_Model(state_dim=10, output_dim=128)
-
-    def act(self, observations, **kwargs):
-        # 假设输入是图像 (B, C, H, W)
-        features = self.cnn(observations)
-        return super().act(features, **kwargs)
-
-    def evaluate(self, critic_observations, **kwargs):
-        features = self.cnn(critic_observations)
-        return super().evaluate(features, **kwargs)
-
-    def act_inference(self, observations):
-        features = self.cnn(observations)
-        return super().act_inference(features)
-
-
-
-
-
-
-
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
@@ -71,7 +38,6 @@ class Avoid_task(VecEnv):
         self.step_dt = self.env_config.get("dt", 0.01)
 
         # buffers
-        self.obs_buf = torch.zeros((self.num_envs, self.num_obs), device=self.device, dtype=gs.tc_float)
         self.reward_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
         self.reset_buf = torch.ones((self.num_envs,), device=self.device, dtype=gs.tc_int)
         self.episode_length_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_int)
@@ -121,11 +87,7 @@ class Avoid_task(VecEnv):
     
     def _reward_lazy(self):
         lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        
-        # 获取 z 轴小于 0.1 的条件
         condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
-        
-        # 计算 lazy_reward，满足条件的环境奖励为 self.episode_length_buf / self.max_episode_length
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
         
         return lazy_reward
