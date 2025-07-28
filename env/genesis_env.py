@@ -48,7 +48,7 @@ class Genesis_env :
             ),
             vis_options = gs.options.VisOptions(
                 rendered_envs_idx = list(range(self.rendered_env_num)),
-                env_separate_rigid=False,
+                env_separate_rigid=True,
             ),
             rigid_options = gs.options.RigidOptions(
                 dt = self.dt,
@@ -154,7 +154,7 @@ class Genesis_env :
     def set_drone_camera(self):
         if (self.env_config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
-                res=(640, 480),
+                res=(64, 48),
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=30,

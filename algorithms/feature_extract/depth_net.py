@@ -12,7 +12,7 @@ class Depth(nn.Module):
         super().__init__()
 
         # input dim, dict[str, tuple[int]]
-        self.state_dim = input_dim["state"][0]      # quat, anglular rate, linear acceleration
+        self.state_dim = input_dim["state"][0]      # quat, anglular rate, linear acceleration, last action
         self.img_dim = input_dim["depth"]           # depth image
 
         # input dim, scaler
@@ -41,9 +41,9 @@ class Depth(nn.Module):
     def reset(self):
         pass
 
-    def forward(self, x: TensorDict):
-        img_feat = self.stem(x["depth"])
-        x_tem = self.act(img_feat + self.v_proj(x["state"]))     
-        self.hx = self.gru(x_tem, self.hx)
-        act = self.fc(self.act(self.hx))
+    def forward(self, obs):
+        img_feat = self.stem(obs["depth"])
+        x = self.act(img_feat + self.v_proj(obs["state"]))
+        # h_new = self.gru(x, hidden_state)
+        act = self.fc(self.act(x))
         return act

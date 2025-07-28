@@ -20,9 +20,13 @@ task:
   target_thr: 0.1
   episode_length_s: 15.0 
   max_episode_length: 1500
-  num_actions: 4                  # roll, pitch, yaw, thrust
-  num_commands: 3                 # 3d position: x, y, z
-  num_obs: 17                     # pos*3, quat*4, vel*3, ang_rate*3, last_actiopn*4 
+
+  num_actions: 4                      # roll, pitch, yaw, thrust
+  num_commands: 3                     # 3d position: x, y, z
+  num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
+  num_obs_img: [1, 48, 64]
+  num_hiden_state: 192
+
   obs_scales:
     cur_pos_error: 0.3333333333333333   # 1 / 3.0 
     lin_vel: 0.3333333333333333   # 1 / 3.0 
@@ -64,7 +68,7 @@ train:
   init_member_classes: {}
 
   policy: 
-    class_name: ActorCritic 
+    class_name: ActorCriticCustom 
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 

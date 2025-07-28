@@ -7,9 +7,8 @@ import pandas as pd
 from typing import Any
 import types
 from rsl_rl.env.vec_env import VecEnv
-from feature_extract.depth_net import Depth
-from rsl_rl.modules.actor_critic import ActorCritic
-
+from tensordict import TensorDict
+from torch.nn import functional as F
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -23,12 +22,12 @@ class Avoid_task(VecEnv):
         self.task_config = task_config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # nums
+        # shapes
         self.num_envs = self.env_config.get("num_envs", 1)
         self.num_actions = task_config["num_actions"]
         self.num_commands = task_config["num_commands"]
-        self.num_obs = task_config["num_obs"]
-        self.num_privileged_obs = None      # used for VecEnv
+        self.num_obs_state = task_config["num_obs_state"]
+        self.num_obs_img = task_config["num_obs_img"]
 
         # parameters
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
@@ -47,6 +46,8 @@ class Avoid_task(VecEnv):
         self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
         self.last_actions = torch.zeros_like(self.actions)
+        self.obs_buf_state = torch.zeros((self.num_envs, self.num_obs_state), device=self.device, dtype=gs.tc_float)
+        self.obs_buf_img = torch.zeros((self.num_envs, *self.num_obs_img), device=self.device, dtype=gs.tc_float)
 
         self.reward_functions = dict()
         self.episode_reward_sums = dict()
@@ -133,7 +134,7 @@ class Avoid_task(VecEnv):
         
         self._update_obs()
 
-        return self.get_observations(), None, self.reward_buf, self.reset_buf, self.extras
+        return self.get_observations(), self.reward_buf, self.reset_buf, self.extras
 
 
     def reset(self, env_idx=None):
@@ -154,16 +155,22 @@ class Avoid_task(VecEnv):
             )
             self.episode_reward_sums[key][reset_range] = 0.0
         self._resample_commands(reset_range)
-        return self.obs_buf, None
+        return self.get_observations()
 
     def get_observations(self):
-        obs = self.obs_buf
-        return obs
-        # return TensorDict({"obs": obs}, batch_size=[self.num_envs])
-
+        dep = torch.from_numpy(self.genesis_env.drone.cam.depth)
+        dep = torch.abs(dep - 255)
+        x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
+        x = F.max_pool2d(x[:, None], 4, 4)
+        group_obs =  TensorDict({
+            "state": self.obs_buf_state, 
+            "depth": x}, batch_size=self.num_envs
+        )
+        return group_obs
+    
     def _update_obs(self):
 
-        self.obs_buf = torch.cat(
+        self.obs_buf_state = torch.cat(
             [
                 torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
                 self.genesis_env.drone.odom.body_quat,
