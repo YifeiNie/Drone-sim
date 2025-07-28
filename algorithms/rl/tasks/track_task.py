@@ -6,7 +6,8 @@ import yaml
 import pandas as pd
 from typing import Any
 import types
-from .base import VecEnv
+from rsl_rl.env.vec_env import VecEnv
+from tensordict import TensorDict
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -131,7 +132,7 @@ class Track_task(VecEnv):
         
         self._update_obs()
 
-        return self.get_observations(), None, self.reward_buf, self.reset_buf, self.extras
+        return self.get_observations(), self.reward_buf, self.reset_buf, self.extras
 
 
     def reset(self, env_idx=None):
@@ -155,9 +156,11 @@ class Track_task(VecEnv):
         return self.obs_buf, None
 
     def get_observations(self):
-        obs = self.obs_buf
-        return obs
-        # return TensorDict({"obs": obs}, batch_size=[self.num_envs])
+        group_obs =  TensorDict({
+            "state": self.obs_buf}, batch_size=self.num_envs
+        )
+        return group_obs
+
 
     def _update_obs(self):
         def check_nan(name, tensor):

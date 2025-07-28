@@ -31,24 +31,23 @@ task:
 
 # All the settings for training the model are defined here
 train:
-
-  algorithm_class_name: PPO 
   checkpoint: -1 
   experiment_name: drone-hovering
   load_run: -1 
   log_interval: 1 
   max_iterations: 300 
   num_steps_per_env: 100 
-  policy_class_name: ActorCritic 
   record_interval: -1 
   resume: False 
   resume_path: null
   run_name:  
   runner_class_name: runner_class_name 
   save_interval: 100 
+  obs_groups: {"policy": ["state"], "critic": ["state"]} # maps observation groups to types. See `vec_env.py` for more information
 
 
   algorithm: 
+    class_name: PPO 
     clip_param: 0.2 
     desired_kl: 0.01 
     entropy_coef: 0.004 
@@ -65,10 +64,11 @@ train:
   init_member_classes: {}
 
   policy: 
+    class_name: ActorCritic 
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
-    init_noise_std: 1.0 
+    init_noise_std: 0.2 
 
 
   runner_class_name: OnPolicyRunner 

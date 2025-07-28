@@ -1,0 +1,109 @@
+--- git status ---
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   rsl_rl/algorithms/ppo.py
+	modified:   rsl_rl/networks/__init__.py
+	modified:   rsl_rl/networks/normalization.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	rsl_rl/modules/actor_critic_custom.py
+
+no changes added to commit (use "git add" and/or "git commit -a") 
+
+
+--- git diff ---
+diff --git a/rsl_rl/algorithms/ppo.py b/rsl_rl/algorithms/ppo.py
+index 7eb4d12..20132a0 100644
+--- a/rsl_rl/algorithms/ppo.py
++++ b/rsl_rl/algorithms/ppo.py
+@@ -215,7 +215,7 @@ class PPO:
+             num_aug = 1
+             # original batch size
+             # we assume policy group is always there and needs augmentation
+-            original_batch_size = obs_batch["policy"].shape[0]
++            original_batch_size = list(obs_batch.values())[0].shape[0]
+ 
+             # check if we should normalize advantages per mini batch
+             if self.normalize_advantage_per_mini_batch:
+@@ -234,7 +234,7 @@ class PPO:
+                 )
+                 # compute number of augmentations per sample
+                 # we assume policy group is always there and needs augmentation
+-                num_aug = int(obs_batch["policy"].shape[0] / original_batch_size)
++                num_aug = int(list(obs_batch.values())[0].shape[0] / original_batch_size)
+                 # repeat the rest of the batch
+                 # -- actor
+                 old_actions_log_prob_batch = old_actions_log_prob_batch.repeat(num_aug, 1)
+diff --git a/rsl_rl/networks/__init__.py b/rsl_rl/networks/__init__.py
+index c18f487..724c9ca 100644
+--- a/rsl_rl/networks/__init__.py
++++ b/rsl_rl/networks/__init__.py
+@@ -7,4 +7,5 @@
+ 
+ from .memory import Memory
+ from .mlp import MLP
+-from .normalization import EmpiricalDiscountedVariationNormalization, EmpiricalNormalization
++from .normalization import EmpiricalDiscountedVariationNormalization, EmpiricalNormalization, EmpiricalNormalizationDict
++from algorithms.feature_extract.depth_net import Depth
+\ No newline at end of file
+diff --git a/rsl_rl/networks/normalization.py b/rsl_rl/networks/normalization.py
+index 5fd9692..3583cd3 100644
+--- a/rsl_rl/networks/normalization.py
++++ b/rsl_rl/networks/normalization.py
+@@ -72,6 +72,51 @@ class EmpiricalNormalization(nn.Module):
+         return y * (self._std + self.eps) + self._mean
+ 
+ 
++class EmpiricalNormalizationDict(nn.Module):
++    """Apply EmpiricalNormalization to each entry in a TensorDict (dictionary of tensors)."""
++
++    def __init__(self, shape_dict: dict[str, tuple[int]], eps=1e-2, until=None):
++        """
++        Args:
++            shape_dict: Dict mapping keys (e.g., "proprio") to tensor shapes (excluding batch dim)
++            eps: Stability constant
++            until: Optional limit to total number of samples for updating stats
++        """
++        super().__init__()
++        self.norms = nn.ModuleDict()
++        for key, shape in shape_dict.items():
++            self.norms[key] = EmpiricalNormalization(shape, eps=eps, until=until)
++
++    def forward(self, obs_dict: dict[str, torch.Tensor]):
++        """
++        Normalize a dict of tensors.
++        """
++        return {k: self.norms[k](v) if k in self.norms else v for k, v in obs_dict.items()}
++
++    @torch.jit.unused
++    def update(self, obs_dict: dict[str, torch.Tensor]):
++        """
++        Update the statistics for all tensors in the dict.
++        """
++        for k, norm in self.norms.items():
++            if k in obs_dict:
++                norm.update(obs_dict[k])
++
++    @torch.jit.unused
++    def inverse(self, normed_obs_dict: dict[str, torch.Tensor]):
++        """
++        Inverse normalization (denormalize).
++        """
++        return {k: self.norms[k].inverse(v) if k in self.norms else v for k, v in normed_obs_dict.items()}
++
++    @property
++    def mean(self):
++        return {k: self.norms[k].mean for k in self.norms}
++
++    @property
++    def std(self):
++        return {k: self.norms[k].std for k in self.norms}
++
+ class EmpiricalDiscountedVariationNormalization(nn.Module):
+     """Reward normalization from Pathak's large scale study on PPO.
+ 
