@@ -24,7 +24,10 @@ class Genesis_env :
             controller_config,
             viewer_follow_drone = False,
             load_map = False, 
-            use_rc = False):
+            use_rc = False,
+            render_cam = True,):
+        
+        self.render_cam = render_cam
         self.use_rc = use_rc
         self.env_config = env_config
         self.controller_config = controller_config
@@ -122,7 +125,8 @@ class Genesis_env :
         # self.update_entity_dis_list()
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
-        self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
+        if self.render_cam:
+            self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
         # self.get_aabb_list()
         # self.reset()

@@ -6,8 +6,8 @@ import yaml
 import pandas as pd
 from typing import Any
 import types
-from rl.tasks.base import VecEnv
-from feature_extract.depth_net import Depth_Model
+from rsl_rl.env.vec_env import VecEnv
+from feature_extract.depth_net import Depth
 from rsl_rl.modules.actor_critic import ActorCritic
 
 
