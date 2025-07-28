@@ -21,12 +21,11 @@ class Track_task(VecEnv):
         self.task_config = task_config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # nums
+        # shapes
         self.num_envs = self.env_config.get("num_envs", 1)
         self.num_actions = task_config["num_actions"]
         self.num_commands = task_config["num_commands"]
         self.num_obs = task_config["num_obs"]
-        self.num_privileged_obs = None      # used for VecEnv
 
         # parameters
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
@@ -153,7 +152,7 @@ class Track_task(VecEnv):
             )
             self.episode_reward_sums[key][reset_range] = 0.0
         self._resample_commands(reset_range)
-        return self.obs_buf, None
+        return self.get_observations()
 
     def get_observations(self):
         group_obs =  TensorDict({
