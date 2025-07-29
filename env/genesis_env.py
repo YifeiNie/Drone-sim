@@ -36,7 +36,7 @@ class Genesis_env :
         self.num_envs = self.env_config.get("num_envs", 1)
         self.dt = self.env_config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
-        self.rendered_env_num = min(3, self.num_envs)
+        self.rendered_env_num = self.num_envs
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -56,7 +56,7 @@ class Genesis_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = True,
+            show_viewer = False,
         )
 
         # creat map
