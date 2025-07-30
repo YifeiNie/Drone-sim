@@ -124,8 +124,8 @@ class PIDcontroller:
                 print("undifined mode, do nothing!!")
                 return
             self.pid_update_TpaFactor()
-
-        self.angle_controller(action)
+        else:
+            self.angle_controller(action)
         self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=None): 

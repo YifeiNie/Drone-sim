@@ -17,7 +17,9 @@ import genesis as gs
 import warp as wp
 
 def main():
-    gs.init(logging_level="warning")
+
+    # logging_level="warning"
+    gs.init()
 
 
     current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,7 +40,8 @@ def main():
         env_config = env_config, 
         controller_config = controller_config,
         viewer_follow_drone = True,
-        use_rc = True
+        use_rc = True,
+        load_map = True
     )
 
     device = "/dev/ttyUSB0"

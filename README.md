@@ -17,7 +17,7 @@
     python scripts/eval/back2nt_eval.py
     ```
 
-#### An tracking RL task
+#### An tracking task
 - Train the model
     ```
     python scripts/train/track_rsl.py 
