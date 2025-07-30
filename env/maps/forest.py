@@ -101,7 +101,7 @@ class ForestEnv:
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                use_3rd_file=tree_file_for_collision,
+                # use_3rd_file=tree_file_for_collision,
             )        
 
             entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=20))

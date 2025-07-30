@@ -255,7 +255,13 @@ if __name__ == "__main__" :
     model.to("cuda")
     model.load_state_dict(torch.load("logs/back2nt/checkpoint0004.pth", map_location='cuda'))
     model.eval()
-    genesis_env = Genesis_env(config=env_config, controller_config=controller_config)
+    genesis_env = Genesis_env(
+        config = env_config, 
+        controller_config = controller_config, 
+        use_rc = False,
+        render_cam = True,
+        show_viewer = True, 
+    )
     genesis_env.step()      # avoid depth image None
     genesis_env.step()
     start_time = time.time()
