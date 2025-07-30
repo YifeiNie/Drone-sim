@@ -37,7 +37,9 @@ def main():
     genesis_env = Genesis_env(
         env_config = env_config, 
         controller_config = controller_config,
+        use_rc = False,
         render_cam = True,
+        show_viewer = True, 
     )
 
     avoid_task = Avoid_task(

@@ -41,7 +41,7 @@ def main():
         controller_config = controller_config,
         viewer_follow_drone = True,
         use_rc = True,
-        load_map = True
+        load_map = False
     )
 
     device = "/dev/ttyUSB0"

@@ -43,7 +43,9 @@ def main():
     genesis_env = Genesis_env(
         env_config = env_config, 
         controller_config = controller_config,
+        use_rc = False,
         render_cam = False,
+        show_viewer = True, 
     )
 
     track_task = Track_task(

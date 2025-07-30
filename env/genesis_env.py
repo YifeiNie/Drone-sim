@@ -25,7 +25,8 @@ class Genesis_env :
             viewer_follow_drone = False,
             load_map = False, 
             use_rc = False,
-            render_cam = True,):
+            show_viewer = True,
+            render_cam = False,):
         
         self.render_cam = render_cam
         self.use_rc = use_rc
@@ -36,7 +37,8 @@ class Genesis_env :
         self.num_envs = self.env_config.get("num_envs", 1)
         self.dt = self.env_config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
-        self.rendered_env_num = self.num_envs
+        
+        self.rendered_env_num = self.num_envs if self.render_cam else min(3, self.num_envs)
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -56,7 +58,7 @@ class Genesis_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = self.render_cam,
+            show_viewer = show_viewer,
         )
 
         # creat map
@@ -123,12 +125,12 @@ class Genesis_env :
     def step(self, action=None): 
         self.scene.step()
         # self.map.entity_list[0].visualize_sdf()
-        self.update_entity_dis_list()
+        # self.update_entity_dis_list()
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
         if self.render_cam:
             self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
-        self.drone.controller.step()
+        self.drone.controller.step(action)
         # self.get_aabb_list()
         # self.reset()
 
