@@ -46,7 +46,7 @@ class Depth(nn.Module):
                 self.hidden_states = hidden_states
         elif self.hidden_states is not None:  # reset hidden states of done environments
             if hidden_states is None:
-                if isinstance(self.hidden_states, tuple):  # tuple in case of LSTM
+                if isinstance(self.hidden_states, tuple):  
                     for hidden_states in self.hidden_states:
                         hidden_states[..., dones == 1, :] = 0.0
                 else:
@@ -58,24 +58,21 @@ class Depth(nn.Module):
 
     def forward(self, obs, hidden_states=None, masks=None):
         batch_mode = masks is not None
-        # train rollout
+        # batch mode (rollout)
         if batch_mode:
             T, B, C, H, W = obs["depth"].shape
             depth_reshape = obs["depth"].permute(1, 0, 2, 3, 4).reshape(B * T, C, H, W)
             state_reshape = obs["state"].permute(1, 0, 2).reshape(B * T, -1)
 
-            img_feat = self.stem(depth_reshape)  # (B*T, 192)
-            state_proj = self.v_proj(state_reshape)  # (B*T, 192)
+            img_feat = self.stem(depth_reshape)                 # (B*T, 192)
+            state_proj = self.v_proj(state_reshape)             # (B*T, 192)
+            x = self.act(img_feat + state_proj)                 # (B*T, 192)
+            x_seq = x.reshape(T, B, -1)                         # (B, T, 192)
+            out_seq, h_new = self.gru(x_seq, hidden_states)     # (T, B, hidden_dim)
+            final_hidden = h_new[-1]                            # (B, hidden_dim)
+            act = self.fc(self.act(final_hidden))               # (B, num_actions)
 
-            x = self.act(img_feat + state_proj)      # (B*T, 192)
-            x_seq = x.reshape(T, B, -1)  # (B, T, 192)
-
-            out_seq, h_new = self.gru(x_seq, hidden_states)  # out_seq: (T, B, hidden_dim)
-            final_hidden = h_new[-1]  # (B, hidden_dim)
-
-            act = self.fc(self.act(final_hidden))  # (B, num_actions)
-
-        # inference
+        # inference mode (evaluate)
         else:
             img_feat = self.stem(obs["depth"])
             x_tem = self.act(img_feat + self.v_proj(obs["state"]))     

@@ -86,9 +86,9 @@ def mavlink_receive_thread(device="/dev/ttyUSB0", baudrate=2000000, rc_config=No
             break
 
 
-def start_mavlink_receive_thread():
+def start_mavlink_receive_thread(device):
     rc_config = load_rc_config("config/sim_env/flight.yaml")
-    t = threading.Thread(target=mavlink_receive_thread, args=(rc_config["USB_path"], rc_config["baudrate"], rc_config), daemon=True)
+    t = threading.Thread(target=mavlink_receive_thread, args=(device, rc_config["baudrate"], rc_config), daemon=True)
     t.start()
 
 if __name__ == "__main__":

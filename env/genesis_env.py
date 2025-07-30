@@ -56,14 +56,14 @@ class Genesis_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = False,
+            show_viewer = self.render_cam,
         )
 
         # creat map
         self.map = ForestEnv(
             min_tree_dis = 1.4, 
-            width = 3, 
-            length = 3
+            width = 1, 
+            length = 1
         )
 
         # add entity in map
@@ -115,19 +115,20 @@ class Genesis_env :
         self.scene.build(n_envs = self.num_envs)
         self.drone_init_pos = self.drone.get_pos()
         self.drone_init_quat = self.drone.get_quat()
-        self.drone.set_dofs_damping(torch.tensor([0.0, 0.0, 0.0, 1e-4, 1e-4, 1e-4]))  # Set damping to a small value to avoid numerical instability
+        # self.drone.set_dofs_damping(torch.tensor([0.0, 0.0, 0.0, 1e-4, 1e-4, 1e-4]))  # Set damping to a small value to avoid numerical instability
 
         # add lidar
         # self.set_drone_lidar()
 
     def step(self, action=None): 
         self.scene.step()
-        # self.update_entity_dis_list()
+        # self.map.entity_list[0].visualize_sdf()
+        self.update_entity_dis_list()
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
         if self.render_cam:
             self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
-        self.drone.controller.step(action)
+        self.drone.controller.step()
         # self.get_aabb_list()
         # self.reset()
 
@@ -186,9 +187,10 @@ class Genesis_env :
 
     def update_entity_dis_list(self):
         cur_pos = self.drone.get_pos()
-        for key, tree in self.map.tree_entity_list.items():
+        for key, tree in self.map.entity_list.items():
             min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
             self.drone.entity_dis_list.update(key, min_dis)
+        self.drone.entity_dis_list.print()
 
     def vis_verts(self):
         all_verts = []

@@ -4,16 +4,16 @@ import genesis as gs
 import numpy as np
 from genesis.options import morphs
 import torch as th
-
+import genesis.utils.geom as gu
 class ForestEnv:
     def __init__(self, min_tree_dis, width, length):
         
         # remember to modify the file path
-        self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
-                        "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
+        self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
+                        "/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
         
-        self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
-                               "/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
+        self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
+                               "/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
         self.weights = [0.35, 0.65]
 
         if len(self.strings) != len(self.weights):
@@ -26,7 +26,7 @@ class ForestEnv:
         self.grid_width = int(self.width / self.cell_size) + 1
         self.grid_length = int(self.length / self.cell_size) + 1
         self.grid = [[None for _ in range(self.grid_length)] for _ in range(self.grid_width)]
-        self.tree_entity_list = {}
+        self.entity_list = {}
 
     def pick(self):
         return random.choices(
@@ -74,7 +74,7 @@ class ForestEnv:
         random.random()
         positions = self.generate_poisson_points()
 
-        for x, y in positions:
+        for x, y in [[1,1]]:
             idx = self.pick()
             tree_file = self.strings[idx]
             tree_file_for_collision = self.strings_convex[idx]
@@ -84,14 +84,14 @@ class ForestEnv:
             pitch = math.radians(random.uniform(0, 10))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
-                file="assets/entity_src/gate/gate_circle.obj",
-                pos=(x-0.5, y-1.5, 1.0),
+                file=tree_file,
+                pos=(x-0.5, y-1.5, 0.0),
                 euler=(
                     90 + math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.03, scale*0.03, scale*0.03),
+                scale=(scale, scale, scale),
                 collision=True,
                 convexify=False,
                 decimate=False,
@@ -101,24 +101,24 @@ class ForestEnv:
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                # use_3rd_file="/home/nyf/Genesis-Drones/Genesis-Drones/scene/entity_src/gate/gate_circle.obj",
+                use_3rd_file=tree_file_for_collision,
             )        
 
-            entity = scene.add_entity(morph)
+            entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=20))
 
-            self.tree_entity_list[entity.idx] = entity
+            self.entity_list[entity.idx] = entity
             
 
     def get_min_dis_from_entity(self, entity, pos):
         # return: 1d-numpy or 0d numpy with num_envs == 1
         if len(entity.links) == 0:
             raise ValueError("Entity has no links.")
-            
-        if len(entity.links[0].geoms) == 0:
-            raise ValueError("First link has no geoms.")
+
         min_sdf = None
         for geom in entity.geoms:
-            sdf_value = geom.sdf_world(pos_world=pos, recompute=True)
+            pos_mesh = gu.inv_transform_by_trans_quat(pos, geom.get_pos(), geom.get_quat())
+            sdf_value = geom._compute_sd(np.array(pos_mesh.cpu()))
+
             if min_sdf is None:
                 min_sdf = sdf_value
             else:
@@ -126,4 +126,4 @@ class ForestEnv:
         return min_sdf
 
     def get_tree_num(self):
-        return len(self.tree_entity_list)
+        return len(self.entity_list)
