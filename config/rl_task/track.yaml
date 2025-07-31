@@ -2,7 +2,7 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 10.0 
+    target: 20.0 
     smooth: -0.01 
     yaw: 0.01 
     angular: -0.002
@@ -22,6 +22,12 @@ task:
   max_episode_length: 1500
   num_actions: 4                  # roll, pitch, yaw, thrust
   num_commands: 3                 # 3d position: x, y, z
+
+  command_cfg:
+    pos_x_range: [-1.0, 1.0] 
+    pos_y_range: [-1.0, 1.0] 
+    pos_z_range: [1.0, 1.0] 
+
   num_obs: 17                     # pos*3, quat*4, vel*3, ang_rate*3, last_action*4 
   obs_scales:
     cur_pos_error: 0.3333333333333333   # 1 / 3.0 

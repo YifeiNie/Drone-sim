@@ -74,7 +74,7 @@ class ForestEnv:
         random.random()
         positions = self.generate_poisson_points()
 
-        for x, y in [[1,1]]:
+        for x, y in positions:
             idx = self.pick()
             tree_file = self.strings[idx]
             tree_file_for_collision = self.strings_convex[idx]
@@ -101,13 +101,40 @@ class ForestEnv:
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
                 visualization=True,
-                # use_3rd_file=tree_file_for_collision,
+                use_3rd_file=tree_file_for_collision,
             )        
-
-            entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=20))
-
+            entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=30))
             self.entity_list[entity.idx] = entity
             
+    def add_gates_to_scene(self, scene):
+        random.random()
+        positions = self.generate_poisson_points()
+        for x, y in positions:
+            scale = random.uniform(0.8, 1.2)
+            roll = math.radians(random.uniform(0, 5))
+            pitch = math.radians(random.uniform(0, 5))
+            yaw = math.radians(random.uniform(0, 360))
+            morph=morphs.Mesh(
+                file="/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gate/gate_circle.obj",
+                pos=(x, y-1.5, random.uniform(0, 0.7)),
+                euler=(
+                    90 + math.degrees(roll),  # roll
+                    math.degrees(pitch),      # pitch  
+                    math.degrees(yaw)         # yaw
+                ),
+                scale=(scale*0.015, scale*0.015, scale*0.015),
+                collision=True,
+                convexify=False,
+                decimate=False,
+                requires_jac_and_IK=False,
+                fixed=True,
+                parse_glb_with_trimesh=True,
+                merge_submeshes_for_collision=False,
+                group_by_material=False,
+                visualization=True,
+            )        
+            entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=30))
+            self.entity_list[entity.idx] = entity
 
     def get_min_dis_from_entity(self, entity, pos):
         # return: 1d-numpy or 0d numpy with num_envs == 1
@@ -124,6 +151,3 @@ class ForestEnv:
             else:
                 min_sdf = np.minimum(min_sdf, sdf_value)
         return min_sdf
-
-    def get_tree_num(self):
-        return len(self.entity_list)
