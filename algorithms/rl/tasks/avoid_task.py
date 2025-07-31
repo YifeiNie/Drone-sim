@@ -26,14 +26,16 @@ class Avoid_task(VecEnv):
         self.num_envs = self.env_config.get("num_envs", 1)
         self.num_actions = task_config["num_actions"]
         self.num_commands = task_config["num_commands"]
+
         self.num_obs_state = task_config["num_obs_state"]
-        self.num_obs_img = task_config["num_obs_img"]
+        self.num_obs_img_pooling = task_config["num_obs_img_pooling"]
+        self.num_obs_img_raw = task_config["num_obs_img_raw"]
 
         # parameters
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
         self.reward_scales = task_config.get("reward_scales", {})
         self.obs_scales = task_config.get("obs_scales", {})
-        self.command_cfg = self.env_config.get("command_cfg", {})
+        self.command_cfg = self.task_config.get("command_cfg", {})
         self.step_dt = self.env_config.get("dt", 0.01)
 
         # buffers
@@ -41,14 +43,21 @@ class Avoid_task(VecEnv):
         self.reset_buf = torch.ones((self.num_envs,), device=self.device, dtype=gs.tc_int)
         self.episode_length_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_int)
         self.command_buf = torch.zeros((self.num_envs, self.num_commands), device=self.device, dtype=gs.tc_float)
-        self.crash_condition = torch.ones((self.num_envs,), device=self.device, dtype=bool)
+        self.crash_condition_buf = torch.ones((self.num_envs,), device=self.device, dtype=bool)
         self.cur_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
         self.last_actions = torch.zeros_like(self.actions)
-        self.obs_buf_state = torch.zeros((self.num_envs, self.num_obs_state), device=self.device, dtype=gs.tc_float)
-        self.obs_buf_img = torch.zeros((self.num_envs, *self.num_obs_img), device=self.device, dtype=gs.tc_float)
 
+        self.obs_buf = TensorDict({
+            "state": torch.zeros((self.num_envs, self.num_obs_state), device=self.device, dtype=gs.tc_float),
+            "img_raw": torch.zeros((self.num_envs, *self.num_obs_img_raw), device=self.device, dtype=gs.tc_float),
+            "img_pooling":torch.zeros((self.num_envs, *self.num_obs_img_pooling), device=self.device, dtype=gs.tc_float)}
+        )
+        
+        self.distance_buf = None    # since the entity num is random      
+
+        # infos
         self.reward_functions = dict()
         self.episode_reward_sums = dict()
         self.extras = dict()  # extra information for logging
@@ -83,15 +92,32 @@ class Avoid_task(VecEnv):
 
     def _reward_crash(self):
         crash_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        crash_reward[self.crash_condition] = 1
+        crash_reward[self.crash_condition_buf] = 1
         return crash_reward
     
     def _reward_lazy(self):
         lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
         condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
-        
         return lazy_reward
+
+    def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
+
+        depth_map = self.obs_buf["img_pooling"]
+        b, _, h, w = depth_map.shape
+        assert h % grid_size[0] == 0 and w % grid_size[1] == 0, "shape error"
+        grid_h = h // grid_size[0]
+        grid_w = w // grid_size[1]
+        safe_reward = torch.zeros(b, device=self.device)
+        depth_map = depth_map.squeeze(1)  # (b, h, w)
+
+        depth_map_reshaped = depth_map.view(b, grid_size[0], grid_size[1], grid_h, grid_w)
+
+        min_depth = depth_map_reshaped.min(dim=-1)[0].min(dim=-1)[0]
+        safe_reward = (min_depth >= danger_threshold).float() * min_depth - (min_depth < danger_threshold).float() * penalty_weight 
+        safe_reward = safe_reward.sum(dim=(1, 2))
+        return safe_reward
+
         
     def _resample_commands(self, envs_idx):
         self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
@@ -118,15 +144,19 @@ class Avoid_task(VecEnv):
         self.episode_length_buf += 1
         self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
         self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
-        self.crash_condition = (
+
+        self.distance_buf = torch.tensor(self.genesis_env.drone.entity_dis_list.lists)
+        self.crash_condition_buf = (
             (torch.abs(self.genesis_env.drone.odom.body_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
             | (torch.abs(self.genesis_env.drone.odom.body_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
+            | (self.distance_buf[:, 0, 0] < self.task_config["collision_if_dis_less_than"]) 
             # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
-        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
+
+        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition_buf
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
         self.compute_reward()
         self.last_actions[:] = self.actions[:]
@@ -158,28 +188,30 @@ class Avoid_task(VecEnv):
         return self.get_observations()
 
     def get_observations(self):
-        dep = torch.from_numpy(self.genesis_env.drone.cam.depth)
-        dep = torch.abs(dep - 255)
-        x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
-        x = F.max_pool2d(x[:, None], 4, 4)
         group_obs =  TensorDict({
-            "state": self.obs_buf_state, 
-            "depth": x}, batch_size=self.num_envs
+            "state": self.obs_buf["state"], 
+            "depth": self.obs_buf["img_pooling"]}, batch_size=self.num_envs
         )
         return group_obs
     
     def _update_obs(self):
-
-        self.obs_buf_state = torch.cat(
-            [
+        self.obs_buf["state"] = torch.cat([
                 torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
                 self.genesis_env.drone.odom.body_quat,
                 torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
                 torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
                 self.last_actions,
-            ],
-            axis=-1,
+            ],axis=-1,
         )
+
+        dep = torch.from_numpy(self.genesis_env.drone.cam.depth).to(self.device)
+        dep = torch.abs(dep - 255)
+        self.obs_buf["img_raw"] = dep
+
+        x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
+        x = F.max_pool2d(x[:, None], 4, 4)
+        self.obs_buf["img_pooling"] = x
+
 
     def get_privileged_observations(self):
         return None

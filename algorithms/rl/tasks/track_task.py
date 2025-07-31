@@ -31,7 +31,7 @@ class Track_task(VecEnv):
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
         self.reward_scales = task_config.get("reward_scales", {})
         self.obs_scales = task_config.get("obs_scales", {})
-        self.command_cfg = self.env_config.get("command_cfg", {})
+        self.command_cfg = self.task_config.get("command_cfg", {})
         self.step_dt = self.env_config.get("dt", 0.01)
 
         # buffers
@@ -40,7 +40,7 @@ class Track_task(VecEnv):
         self.reset_buf = torch.ones((self.num_envs,), device=self.device, dtype=gs.tc_int)
         self.episode_length_buf = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_int)
         self.command_buf = torch.zeros((self.num_envs, self.num_commands), device=self.device, dtype=gs.tc_float)
-        self.crash_condition = torch.ones((self.num_envs,), device=self.device, dtype=bool)
+        self.crash_condition_buf = torch.ones((self.num_envs,), device=self.device, dtype=bool)
         self.cur_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
@@ -80,7 +80,7 @@ class Track_task(VecEnv):
 
     def _reward_crash(self):
         crash_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        crash_reward[self.crash_condition] = 1
+        crash_reward[self.crash_condition_buf] = 1
         return crash_reward
     
     def _reward_lazy(self):
@@ -115,7 +115,7 @@ class Track_task(VecEnv):
         self.episode_length_buf += 1
         self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
         self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
-        self.crash_condition = (
+        self.crash_condition_buf = (
             (torch.abs(self.genesis_env.drone.odom.body_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
             | (torch.abs(self.genesis_env.drone.odom.body_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
@@ -123,7 +123,7 @@ class Track_task(VecEnv):
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
             # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
-        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition
+        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition_buf
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
         self.compute_reward()
         self.last_actions[:] = self.actions[:]

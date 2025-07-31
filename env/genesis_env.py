@@ -63,14 +63,17 @@ class Genesis_env :
 
         # creat map
         self.map = ForestEnv(
-            min_tree_dis = 1.4, 
-            width = 1, 
-            length = 1
+            min_tree_dis = 0.7, 
+            width = 3, 
+            length = 3
         )
 
         # add entity in map
         if load_map is True:
-            self.map.add_trees_to_scene(scene = self.scene)
+            if self.env_config["map"] == "forest":
+                self.map.add_trees_to_scene(scene = self.scene)
+            elif self.env_config["map"] == "gates":
+                self.map.add_gates_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
@@ -84,7 +87,8 @@ class Genesis_env :
             self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
-        setattr(self.drone, 'entity_dis_list', MultiEntityList(max_size=self.env_config.get("max_dis_num", 5), num_envs=self.num_envs))     
+        self.max_size = self.env_config.get("max_dis_num", 5)
+        setattr(self.drone, 'entity_dis_list', MultiEntityList(self.max_size, num_envs=self.num_envs))     
         
         # add odom for drone
         self.set_drone_imu()
@@ -124,8 +128,8 @@ class Genesis_env :
 
     def step(self, action=None): 
         self.scene.step()
-        # self.map.entity_list[0].visualize_sdf()
-        # self.update_entity_dis_list()
+        self.update_entity_dis_list()
+        # print(torch.tensor(self.drone.entity_dis_list.lists))
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
         if self.render_cam:
@@ -192,7 +196,7 @@ class Genesis_env :
         for key, tree in self.map.entity_list.items():
             min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
             self.drone.entity_dis_list.update(key, min_dis)
-        self.drone.entity_dis_list.print()
+        # self.drone.entity_dis_list.print()
 
     def vis_verts(self):
         all_verts = []
