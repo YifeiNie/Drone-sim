@@ -9,11 +9,11 @@ class ForestEnv:
     def __init__(self, min_tree_dis, width, length):
         
         # remember to modify the file path
-        self.strings = ["/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
-                        "/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
+        self.strings = ["assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1.obj", 
+                        "assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7.obj"]
         
-        self.strings_convex = ["/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
-                               "/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
+        self.strings_convex = ["assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_1/meshes/tree_1_convex.obj", 
+                               "assets/entity_src/gazebo-vegetation/gazebo_vegetation/models/tree_7/meshes/tree_7_convex.obj"]
         self.weights = [0.35, 0.65]
 
         if len(self.strings) != len(self.weights):
@@ -115,8 +115,8 @@ class ForestEnv:
             pitch = math.radians(random.uniform(0, 5))
             yaw = math.radians(random.uniform(0, 360))
             morph=morphs.Mesh(
-                file="/home/nyf/Genesis-Drones/Genesis-Drones/assets/entity_src/gate/gate_circle.obj",
-                pos=(x, y-1.5, random.uniform(0, 0.7)),
+                file="assets/entity_src/gate/gate_circle.obj",
+                pos=(x, y-1.5, random.uniform(0.5, 1.0)),
                 euler=(
                     90 + math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  

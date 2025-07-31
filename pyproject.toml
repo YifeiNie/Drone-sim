@@ -24,6 +24,7 @@ open3d = "*"
 pyserial ="*"
 pymavlink = "*"
 pyyaml = "*"
+rsl-rl-lib = { git = "git@github.com:YifeiNie/rsl_rl.git", branch = "main" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0"

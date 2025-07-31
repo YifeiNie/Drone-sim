@@ -2,20 +2,21 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 10.0 
-    smooth: -0.01 
-    yaw: 0.01 
-    angular: -0.002
-    crash: -10.0 
-    lazy: -1
-    safe: 0.1
+    target: 20.0
+    go_forward: 20.0 
+    smooth: -0.1 
+    yaw: 0.1 
+    angular: -0.02
+    crash: -1.0 
+    lazy: -0.1
+    safe: 0.
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
   termination_if_close_to_ground: 0.1 
   termination_if_x_greater_than: 5.0 
   termination_if_y_greater_than: 5.0 
-  termination_if_z_greater_than: 2.0 
+  termination_if_z_greater_than: 1.5 
   collision_if_dis_less_than: 0.2
 
   clip_actions: 1.0 
@@ -28,7 +29,7 @@ task:
   command_cfg:
     pos_x_range: [3.0, 3.5] 
     pos_y_range: [-2.0, 2.0] 
-    pos_z_range: [0.5, 1.0] 
+    pos_z_range: [0.7, 1.1] 
 
   num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
   num_obs_img_raw: [1, 48, 64]        # raw is[1, 48, 64], after pooling is [1, 12, 16]
@@ -81,7 +82,7 @@ train:
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
     init_noise_std: 0.2 
-
+    noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 
   seed: 1 

@@ -118,6 +118,10 @@ class Avoid_task(VecEnv):
         safe_reward = safe_reward.sum(dim=(1, 2))
         return safe_reward
 
+    def _reward_go_forward(self):
+        go_forward_reward = self.genesis_env.drone.odom.body_euler[:, 1] / 180 * 3.14159
+        return go_forward_reward / (self.episode_length_buf + 1)
+        
         
     def _resample_commands(self, envs_idx):
         self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)

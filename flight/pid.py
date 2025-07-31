@@ -89,7 +89,7 @@ class PIDcontroller:
         if action is None:
             throttle = np.clip(self.rc_command["throttle"], 0, 1) * self.base_rpm * 3
         else:
-            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1] * 0.4, 0, 1) * self.base_rpm * 3
+            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1] * 0.2, 0, 1) * self.base_rpm * 3
         self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 3.5, self.base_rpm * 3.5)
         motor_outputs = torch.stack([
             throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
