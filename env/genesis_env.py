@@ -39,18 +39,21 @@ class Genesis_env :
         self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         
         self.rendered_env_num = self.num_envs if self.render_cam else min(3, self.num_envs)
+
+        # self.rendered_env_num = min(3, self.num_envs)
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
             viewer_options = gs.options.ViewerOptions(
-                max_FPS = self.env_config.get("max_vis_FPS", 60),
+                max_FPS = self.env_config.get("max_vis_FPS", 15),
                 camera_pos = (-3.0, 0.0, 3.0),
                 camera_lookat = (0.0, 0.0, 1.0),
                 camera_fov = 40,
             ),
             vis_options = gs.options.VisOptions(
                 rendered_envs_idx = list(range(self.rendered_env_num)),
-                env_separate_rigid=True,
+                env_separate_rigid = True,
+                shadow = False,
             ),
             rigid_options = gs.options.RigidOptions(
                 dt = self.dt,
