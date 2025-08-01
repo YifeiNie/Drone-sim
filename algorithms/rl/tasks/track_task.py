@@ -128,7 +128,7 @@ class Track_task(VecEnv):
         self.compute_reward()
         self.last_actions[:] = self.actions[:]
         self._resample_commands(self._at_target())
-        
+        # self.update_extras()
         self._update_obs()
 
         return self.get_observations(), self.reward_buf, self.reset_buf, self.extras
@@ -144,13 +144,7 @@ class Track_task(VecEnv):
         self.last_actions[reset_range] = 0.0
         self.episode_length_buf[reset_range] = 0
         self.reset_buf[reset_range] = True
-
-        self.extras["episode"] = {}
-        for key in self.episode_reward_sums.keys():
-            self.extras["episode"]["rew_" + key] = (
-                torch.mean(self.episode_reward_sums[key][reset_range]).item() / self.task_config["episode_length_s"]
-            )
-            self.episode_reward_sums[key][reset_range] = 0.0
+        self._update_extras(reset_range)
         self._resample_commands(reset_range)
         return self.get_observations()
 
@@ -185,4 +179,16 @@ class Track_task(VecEnv):
 
     def get_privileged_observations(self):
         return None
+    
+    def _update_extras(self, env_idx=None):
+        if env_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = env_idx
+        self.extras["episode"] = {}
+        for key in self.episode_reward_sums.keys():
+            self.extras["episode"]["reward_" + key] = (
+                torch.mean(self.episode_reward_sums[key]).item() / self.max_episode_length
+            )
+            self.episode_reward_sums[key][reset_range] = 0.0
 
