@@ -160,12 +160,12 @@ class Avoid_task(VecEnv):
         return at_target
 
     def step(self, action):
+        self.reward_buf[:] = 0.0
         self.step_cnt = self.step_cnt + 1
         if self.step_cnt == self.num_steps_per_env:
             self.step_cnt = 0
             self.cur_iter = self.cur_iter + 1
             # extinct
-            self.reward_buf[:] = 0.0
             self.reward_scales["target"] *= 1.1
             self.reward_scales["crash"] *= 0.985
             self.reward_scales["safe"] *= 0.99
