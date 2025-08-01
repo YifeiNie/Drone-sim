@@ -13,6 +13,8 @@ from torch.nn import functional as F
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
+def barrier(x: torch.Tensor, v_to_pt):
+    return (v_to_pt * (1 - x).relu().pow(2)).mean()
 
 class Avoid_task(VecEnv):
     def __init__(self, genesis_env, env_config, task_config):
@@ -101,22 +103,31 @@ class Avoid_task(VecEnv):
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
         return lazy_reward
 
-    def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
+    # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
 
-        depth_map = self.obs_buf["img_pooling"]
-        b, _, h, w = depth_map.shape
-        assert h % grid_size[0] == 0 and w % grid_size[1] == 0, "shape error"
-        grid_h = h // grid_size[0]
-        grid_w = w // grid_size[1]
-        safe_reward = torch.zeros(b, device=self.device)
-        depth_map = depth_map.squeeze(1)  # (b, h, w)
+    #     depth_map = self.obs_buf["img_pooling"]
+    #     b, _, h, w = depth_map.shape
+    #     assert h % grid_size[0] == 0 and w % grid_size[1] == 0, "shape error"
+    #     grid_h = h // grid_size[0]
+    #     grid_w = w // grid_size[1]
+    #     safe_reward = torch.zeros(b, device=self.device)
+    #     depth_map = depth_map.squeeze(1)  # (b, h, w)
 
-        depth_map_reshaped = depth_map.view(b, grid_size[0], grid_size[1], grid_h, grid_w)
+    #     depth_map_reshaped = depth_map.view(b, grid_size[0], grid_size[1], grid_h, grid_w)
 
-        min_depth = depth_map_reshaped.min(dim=-1)[0].min(dim=-1)[0]
-        safe_reward = (min_depth >= danger_threshold).float() * min_depth - (min_depth < danger_threshold).float() * penalty_weight 
-        safe_reward = safe_reward.sum(dim=(1, 2))
-        return safe_reward
+    #     min_depth = depth_map_reshaped.min(dim=-1)[0].min(dim=-1)[0]
+    #     safe_reward = (min_depth >= danger_threshold).float() * min_depth - (min_depth < danger_threshold).float() * penalty_weight 
+    #     safe_reward = safe_reward.sum(dim=(1, 2))
+    #     return safe_reward
+
+    def _reward_safe(self):
+        distance = self.distance_buf
+        with torch.no_grad():
+            v_to_pt = (-torch.diff(distance, 1, 1) * 135).clamp_min(1)
+        obj_avoidance_reward = barrier(distance[:, 1:], v_to_pt)
+        collide_reward = F.softplus(distance[:, 1:].mul(-32)).mul(v_to_pt).mean()
+        return collide_reward * 2 + obj_avoidance_reward
+
 
     def _reward_go_forward(self):
         go_forward_reward = self.genesis_env.drone.odom.body_euler[:, 1] / 180 * 3.14159
