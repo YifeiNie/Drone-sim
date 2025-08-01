@@ -106,10 +106,14 @@ class Avoid_task(VecEnv):
         return crash_reward
     
     def _reward_lazy(self):
-        lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.2
-        lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
+        z = self.genesis_env.drone.odom.world_pos[:, 2]
+        z_min, z_max = 0.35, 1.3
+        slope = 10.0  
+        inside_score = torch.sigmoid((z - z_min) * slope) * torch.sigmoid((z_max - z) * slope)
+        lazy_reward = inside_score  
+        
         return lazy_reward
+
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
 
@@ -133,17 +137,17 @@ class Avoid_task(VecEnv):
         with torch.no_grad():
             v_to_pt = (self.min_distance_buf - self.last_min_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
         obj_avoidance_reward = barrier(distance, v_to_pt)
-        collide_reward = F.softplus(distance.mul(-1)).mul(v_to_pt)
-        return collide_reward * 2 - obj_avoidance_reward
+        collide_reward = F.softplus(distance * (1 - torch.sigmoid((distance - 0.8) * 10)).mul(-1)).mul(v_to_pt)
+        return collide_reward - obj_avoidance_reward
 
 
     def _reward_go_forward(self):
-        go_forward_reward = self.genesis_env.drone.odom.body_euler[:, 1] / 180 * 3.14159
+        go_forward_reward = self.genesis_env.drone.odom.body_euler[:, 1] / 3.14159
         return go_forward_reward
         
         
     def _resample_commands(self, envs_idx):
-        self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 0] = gs_rand_float(*tuple(v + self.cur_iter/100 for v in self.command_cfg["pos_x_range"]), (len(envs_idx),), self.device)
         self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
         self.command_buf[envs_idx, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(envs_idx),), self.device)
 
@@ -165,9 +169,10 @@ class Avoid_task(VecEnv):
             self.cur_iter = self.cur_iter + 1
             # extinct
             self.reward_scales["target"] *= 1.05
-            self.reward_scales["crash"] *= 0.985
+            self.reward_scales["crash"] *= 0.98
             self.reward_scales["safe"] *= 0.99
             self.reward_scales["go_forward"] *= 0.97
+            self.reward_scales["lazy"] *= 0.97
 
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
