@@ -14,7 +14,7 @@ def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 def barrier(x: torch.Tensor, v_to_pt):
-    return (v_to_pt * (1 - x).relu().pow(2)).sum(dim=1)
+    return (v_to_pt * (1 - x).relu().pow(2))
 
 class Avoid_task(VecEnv):
     def __init__(self, genesis_env, train_config, env_config, task_config):
@@ -109,8 +109,6 @@ class Avoid_task(VecEnv):
         lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
         condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.2
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
-        lazy_reward -= torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 0])
-        lazy_reward -= torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 1])
         return lazy_reward
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
@@ -131,17 +129,17 @@ class Avoid_task(VecEnv):
     #     return safe_reward
 
     def _reward_safe(self):
-        distance = self.distance_buf
+        distance = self.min_distance_buf
         with torch.no_grad():
-            v_to_pt = (self.distance_buf - self.last_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
+            v_to_pt = (self.min_distance_buf - self.last_min_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
         obj_avoidance_reward = barrier(distance, v_to_pt)
-        collide_reward = F.softplus(distance.mul(-1)).mul(v_to_pt).sum(dim=1)
-        return collide_reward * 2 + obj_avoidance_reward
+        collide_reward = F.softplus(distance.mul(-1)).mul(v_to_pt)
+        return collide_reward * 2 - obj_avoidance_reward
 
 
     def _reward_go_forward(self):
         go_forward_reward = self.genesis_env.drone.odom.body_euler[:, 1] / 180 * 3.14159
-        return go_forward_reward / (self.episode_length_buf + 1)
+        return go_forward_reward
         
         
     def _resample_commands(self, envs_idx):
@@ -160,16 +158,16 @@ class Avoid_task(VecEnv):
         return at_target
 
     def step(self, action):
+        self.reward_buf[:] = 0.0
         self.step_cnt = self.step_cnt + 1
         if self.step_cnt == self.num_steps_per_env:
             self.step_cnt = 0
             self.cur_iter = self.cur_iter + 1
             # extinct
-            self.reward_buf[:] = 0.0
-            self.reward_scales["target"] *= 1.1
+            self.reward_scales["target"] *= 1.05
             self.reward_scales["crash"] *= 0.985
             self.reward_scales["safe"] *= 0.99
-            self.reward_scales["go_forward"] *= 0.985
+            self.reward_scales["go_forward"] *= 0.97
 
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
@@ -260,6 +258,6 @@ class Avoid_task(VecEnv):
         self.extras["episode"] = {}
         for key in self.episode_reward_sums.keys():
             self.extras["episode"]["reward_" + key] = (
-                torch.mean(self.episode_reward_sums[key]).item() / self.max_episode_length
+                torch.mean(self.episode_reward_sums[key]).item()
             )
             self.episode_reward_sums[key][reset_range] = 0.0
