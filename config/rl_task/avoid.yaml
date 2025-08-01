@@ -2,14 +2,14 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 5.0
-    go_forward: 10.0 
+    target: 10.0
+    go_forward: 1000.0 
     smooth: -0.1 
     yaw: 0.1 
     angular: -0.02
-    crash: -100.0 
+    crash: -1000.0 
     lazy: -1
-    safe: 100
+    safe: 10
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
@@ -82,7 +82,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
-    init_noise_std: 0.3 
+    init_noise_std: 0.2 
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 
