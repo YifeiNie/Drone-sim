@@ -76,15 +76,6 @@ class Avoid_task(VecEnv):
         self._register_reward_fun()
 
     def compute_reward(self):
-
-        # extinct
-        self.reward_buf[:] = 0.0
-        self.reward_scales["target"] *= 1.015
-        self.reward_scales["crash"] *= 0.985
-        self.reward_scales["safe"] *= 0.99
-        self.reward_scales["go_forward"] *= 0.985
-        
-
         for name, reward_func in self.reward_functions.items():
             reward = reward_func() * self.reward_scales[name]
             self.reward_buf += reward
@@ -173,6 +164,12 @@ class Avoid_task(VecEnv):
         if self.step_cnt == self.num_steps_per_env:
             self.step_cnt = 0
             self.cur_iter = self.cur_iter + 1
+            # extinct
+            self.reward_buf[:] = 0.0
+            self.reward_scales["target"] *= 1.1
+            self.reward_scales["crash"] *= 0.985
+            self.reward_scales["safe"] *= 0.99
+            self.reward_scales["go_forward"] *= 0.985
 
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
