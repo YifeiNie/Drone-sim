@@ -15,7 +15,7 @@ def main():
     gs.init(logging_level="warning")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = f"logs/rsl_track/track_task_{timestamp}"
+    log_dir = f"logs/rsl_avoid/rsl_avoid_{timestamp}"
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
