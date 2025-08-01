@@ -48,7 +48,7 @@ pos:
   kf_t: 0.0
 
 pid_exec_freq: 60
-base_rpm: 8100.0
+base_rpm: 8150.0
 use_RC: True
 weight: 500.0    # unit is grams 
 inertia_matrix:

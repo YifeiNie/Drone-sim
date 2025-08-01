@@ -83,19 +83,19 @@ class Genesis_env :
 
         # creat map
         self.map = ForestEnv(
-            min_tree_dis = 1.7, 
-            width = 5, 
-            length = 5
+            min_tree_dis = 0.9, 
+            width = 4, 
+            length = 4
         )
 
         # add entity in map
-        self.map.add_trees_to_scene(scene = self.scene)
+        self.map.add_gates_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(-2.5, 0.0, 0.0))
+        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(-1.5, 0.0, 0.0))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -223,7 +223,7 @@ def model_process(model, env, h):
     state = torch.cat(state, -1)
     
     dep = torch.from_numpy(env.drone.cam.depth)
-    dep = torch.abs(dep - 255)
+    # dep = torch.abs(dep - 255)
     x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
     x = F.max_pool2d(x[:, None], 4, 4)
     act, values, h = model(x.to("cuda"), state, h)
@@ -258,9 +258,6 @@ if __name__ == "__main__" :
     genesis_env = Genesis_env(
         config = env_config, 
         controller_config = controller_config, 
-        use_rc = False,
-        render_cam = True,
-        show_viewer = True, 
     )
     genesis_env.step()      # avoid depth image None
     genesis_env.step()
@@ -274,7 +271,7 @@ if __name__ == "__main__" :
         genesis_env.step(action)
 
         current_time = time.time()
-        if current_time - start_time >= 4:
+        if current_time - start_time >= 15:
             print(f"Executed for {4} seconds, resetting.")
             genesis_env.reset()
 

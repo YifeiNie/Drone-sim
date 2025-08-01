@@ -52,11 +52,12 @@ def main():
     track_task = Track_task(
         genesis_env = genesis_env, 
         env_config = env_config, 
-        task_config = task_config
+        task_config = task_config,
+        train_config = train_config,
     )
 
     runner = OnPolicyRunner(track_task, train_config, log_dir, device="cuda:0")
-    runner.learn(num_learning_iterations=300, init_at_random_ep_len=True)
+    runner.learn(num_learning_iterations=train_config["max_iterations"], init_at_random_ep_len=True)
 
 if __name__ == "__main__" :
     wp.config.enable_backward_log = True
