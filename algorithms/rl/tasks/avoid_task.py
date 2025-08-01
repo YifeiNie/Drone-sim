@@ -99,8 +99,10 @@ class Avoid_task(VecEnv):
     
     def _reward_lazy(self):
         lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
-        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
+        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.2
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
+        lazy_reward -= torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 0])
+        lazy_reward -= torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 1])
         return lazy_reward
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
@@ -220,7 +222,7 @@ class Avoid_task(VecEnv):
         )
 
         dep = torch.from_numpy(self.genesis_env.drone.cam.depth).to(self.device)
-        dep = torch.abs(dep - 255)
+        # dep = torch.abs(dep - 255)
         self.obs_buf["img_raw"] = dep
 
         x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
