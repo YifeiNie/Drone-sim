@@ -136,7 +136,7 @@ class Genesis_env :
         # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
         if self.render_cam:
-            self.drone.cam.depth = self.drone.cam.render(rgb=True, depth=True)[1]   # [1] is idx of depth img
+            self.drone.cam.depth = self.drone.cam.render(rgb=False, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
         # self.get_aabb_list()
         # self.reset()
