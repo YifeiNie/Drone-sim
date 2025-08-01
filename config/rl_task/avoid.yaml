@@ -3,13 +3,13 @@ task:
   yaw_lambda: -10.0 
   reward_scales:
     target: 20.0
-    go_forward: 20.0 
+    go_forward: 10.0 
     smooth: -0.1 
     yaw: 0.1 
     angular: -0.02
     crash: -1.0 
-    lazy: -0.1
-    safe: 0.
+    lazy: -1
+    safe: 0.1
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
@@ -17,7 +17,7 @@ task:
   termination_if_x_greater_than: 5.0 
   termination_if_y_greater_than: 5.0 
   termination_if_z_greater_than: 1.5 
-  collision_if_dis_less_than: 0.2
+  collision_if_dis_less_than: 0.12
 
   clip_actions: 1.0 
   target_thr: 0.1
@@ -48,7 +48,7 @@ train:
   experiment_name: drone-hovering
   load_run: -1 
   log_interval: 1 
-  max_iterations: 300 
+  max_iterations: 2 
   num_steps_per_env: 100 
   record_interval: -1 
   resume: False 
