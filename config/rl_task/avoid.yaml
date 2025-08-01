@@ -16,7 +16,7 @@ task:
   termination_if_close_to_ground: 0.2 
   termination_if_x_greater_than: 5.0 
   termination_if_y_greater_than: 5.0 
-  termination_if_z_greater_than: 1.5 
+  termination_if_z_greater_than: 1.0 
   collision_if_dis_less_than: 0.12
 
   clip_actions: 1.0 
@@ -82,7 +82,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
-    init_noise_std: 0.4 
+    init_noise_std: 0.3 
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 
