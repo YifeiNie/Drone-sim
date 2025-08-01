@@ -2,8 +2,8 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 20.0
-    go_forward: 50.0 
+    target: 5.0
+    go_forward: 10.0 
     smooth: -0.1 
     yaw: 0.1 
     angular: -0.02
