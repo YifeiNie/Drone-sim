@@ -2,14 +2,14 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 20.0
-    go_forward: 20.0 
+    target: 200.0
+    go_forward: 200.0 
     smooth: -0.1 
     yaw: 0.1 
     angular: -0.02
     crash: -1.0 
-    lazy: -0.1
-    safe: 0.
+    lazy: -1.0
+    safe: 10.0
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
@@ -55,7 +55,7 @@ train:
   resume_path: null
   run_name:  
   runner_class_name: runner_class_name 
-  save_interval: 100 
+  save_interval: 300 
   obs_groups: {"policy": ["state", "depth"], "critic": ["state", "depth"]} # maps observation groups to types. See `vec_env.py` for more information
 
 

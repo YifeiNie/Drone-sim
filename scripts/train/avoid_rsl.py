@@ -50,7 +50,7 @@ def main():
     )
     genesis_env.step()
     runner = OnPolicyRunner(avoid_task, train_config, log_dir, device="cuda:0")
-    runner.learn(num_learning_iterations=300, init_at_random_ep_len=True)
+    runner.learn(num_learning_iterations=1, init_at_random_ep_len=True)
 
 if __name__ == "__main__" :
     wp.config.enable_backward_log = True

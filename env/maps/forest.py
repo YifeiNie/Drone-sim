@@ -113,7 +113,7 @@ class ForestEnv:
             scale = random.uniform(0.8, 1.2)
             roll = math.radians(random.uniform(0, 5))
             pitch = math.radians(random.uniform(0, 5))
-            yaw = math.radians(random.uniform(0, 360))
+            yaw = math.radians(random.uniform(0, 3.0))
             morph=morphs.Mesh(
                 file="assets/entity_src/gate/gate_circle.obj",
                 pos=(x, y-1.5, random.uniform(0.5, 1.0)),
