@@ -82,7 +82,7 @@ class Genesis_env :
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.3))
+        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(0.0, 0.0, 0.4))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -199,7 +199,7 @@ class Genesis_env :
         for key, tree in self.map.entity_list.items():
             min_dis = self.map.get_min_dis_from_entity(tree, cur_pos)
             self.drone.entity_dis_list.update(key, min_dis)
-        # self.drone.entity_dis_list.print()
+        self.drone.entity_dis_list.print()
 
     def vis_verts(self):
         all_verts = []

@@ -17,10 +17,11 @@ def barrier(x: torch.Tensor, v_to_pt):
     return (v_to_pt * (1 - x).relu().pow(2)).mean()
 
 class Avoid_task(VecEnv):
-    def __init__(self, genesis_env, env_config, task_config):
+    def __init__(self, genesis_env, train_config, env_config, task_config):
         # configs
         self.genesis_env = genesis_env
         self.env_config = env_config
+        self.train_config = train_config
         self.task_config = task_config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -35,6 +36,7 @@ class Avoid_task(VecEnv):
 
         # parameters
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
+        self.num_steps_per_env = self.train_config["num_steps_per_env"]
         self.reward_scales = task_config.get("reward_scales", {})
         self.obs_scales = task_config.get("obs_scales", {})
         self.command_cfg = self.task_config.get("command_cfg", {})
@@ -50,6 +52,8 @@ class Avoid_task(VecEnv):
         self.last_pos_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
         self.last_actions = torch.zeros_like(self.actions)
+        self.cur_iter = 0
+        self.step_cnt = 0
 
         self.obs_buf = TensorDict({
             "state": torch.zeros((self.num_envs, self.num_obs_state), device=self.device, dtype=gs.tc_float),
@@ -67,7 +71,15 @@ class Avoid_task(VecEnv):
         self._register_reward_fun()
 
     def compute_reward(self):
+
+        # extinct
         self.reward_buf[:] = 0.0
+        self.reward_scales["target"] *= 1.015
+        self.reward_scales["crash"] *= 0.985
+        self.reward_scales["safe"] *= 0.99
+        self.reward_scales["go_forward"] *= 0.985
+        
+
         for name, reward_func in self.reward_functions.items():
             reward = reward_func() * self.reward_scales[name]
             self.reward_buf += reward
@@ -152,6 +164,11 @@ class Avoid_task(VecEnv):
         return at_target
 
     def step(self, action):
+        self.step_cnt = self.step_cnt + 1
+        if self.step_cnt == self.num_steps_per_env:
+            self.step_cnt = 0
+            self.cur_iter = self.cur_iter + 1
+
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
         
@@ -162,15 +179,15 @@ class Avoid_task(VecEnv):
         self.last_pos_error = self.command_buf - self.genesis_env.drone.odom.last_world_pos
         self.cur_pos_error = self.command_buf - self.genesis_env.drone.odom.world_pos
 
-        self.distance_buf = torch.tensor(self.genesis_env.drone.entity_dis_list.lists)
+        self.distance_buf = -torch.tensor(self.genesis_env.drone.entity_dis_list.lists)
         self.crash_condition_buf = (
             (torch.abs(self.genesis_env.drone.odom.body_euler[:, 1]) > self.task_config["termination_if_pitch_greater_than"])
             | (torch.abs(self.genesis_env.drone.odom.body_euler[:, 0]) > self.task_config["termination_if_roll_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 0]) > self.task_config["termination_if_x_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 1]) > self.task_config["termination_if_y_greater_than"])
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
-            | (self.distance_buf[:, 0, 0] < self.task_config["collision_if_dis_less_than"]) 
-            # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
+            | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
+            | (self.distance_buf[:, :, 0].min(dim=1).values < self.task_config["collision_if_dis_less_than"]) 
         )
 
         self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition_buf
