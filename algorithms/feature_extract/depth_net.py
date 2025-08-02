@@ -59,7 +59,7 @@ class Depth(nn.Module):
 
     def forward(self, obs, hidden_states=None, masks=None):
         batch_mode = masks is not None
-        # batch mode (rollout)
+        # batch mode (train)
         if batch_mode:
             T, B, C, H, W = obs["depth"].shape
             depth_reshape = obs["depth"].permute(1, 0, 2, 3, 4).reshape(B * T, C, H, W)
@@ -67,18 +67,18 @@ class Depth(nn.Module):
 
             img_feat = self.stem(depth_reshape)                         # (B*T, 192)
             state_proj = self.v_proj(state_reshape)                     # (B*T, 192)
-            x = self.act(torch.cat([img_feat, state_proj], dim=-1))     # (B*T, 192*2)
-            x_seq = x.reshape(T, B, -1)                                 # (B, T, 192*2)
+            # x = self.act(torch.cat([img_feat, state_proj], dim=-1))     # (B*T, 192*2)
+            x_seq = torch.cat([img_feat, state_proj], dim=-1).reshape(T, B, -1)                                 # (B, T, 192*2)
             out_seq, h_new = self.gru(x_seq, hidden_states)             # (T, B, hidden_dim)
             final_hidden = h_new[-1]                                    # (B, hidden_dim)
             act = self.fc(self.act(final_hidden))                       # (B, num_actions)
 
-        # inference mode (evaluate)
+        # inference mode (rollout)
         else:
             img_feat = self.stem(obs["depth"])
             x_tem = self.act(torch.cat([img_feat, self.v_proj(obs["state"])], dim=-1))     
             _, self.hidden_states = self.gru(x_tem.unsqueeze(0), self.hidden_states)
-            act = self.fc(self.act(self.hidden_states)).squeeze(0)
+            act = self.fc(self.act(self.hidden_states[-1])).squeeze(0)
 
-        return act
+        return torch.tanh(act)
 

@@ -83,8 +83,8 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
-    init_noise_std: 0.2 
-    noise_std_type: "log"
+    init_noise_std: 0.02 
+    # noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 
   seed: 1 
