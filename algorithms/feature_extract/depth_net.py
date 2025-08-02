@@ -33,7 +33,7 @@ class Depth(nn.Module):
         self.v_proj.weight.data.mul_(0.5)
 
         # self.gru = nn.GRUCell(192, 192)
-        self.gru = nn.GRU(192, 192, num_layers=self.num_layers)
+        self.gru = nn.GRU(192*2, 192, num_layers=self.num_layers)
         self.fc = nn.Linear(192, self.output_dim, bias=False)
         self.fc.weight.data.mul_(0.01)
         self.act = nn.LeakyReLU(0.05)   # activate
@@ -64,13 +64,13 @@ class Depth(nn.Module):
             depth_reshape = obs["depth"].permute(1, 0, 2, 3, 4).reshape(B * T, C, H, W)
             state_reshape = obs["state"].permute(1, 0, 2).reshape(B * T, -1)
 
-            img_feat = self.stem(depth_reshape)                 # (B*T, 192)
-            state_proj = self.v_proj(state_reshape)             # (B*T, 192)
-            x = self.act(img_feat + state_proj)                 # (B*T, 192)
-            x_seq = x.reshape(T, B, -1)                         # (B, T, 192)
-            out_seq, h_new = self.gru(x_seq, hidden_states)     # (T, B, hidden_dim)
-            final_hidden = h_new[-1]                            # (B, hidden_dim)
-            act = self.fc(self.act(final_hidden))               # (B, num_actions)
+            img_feat = self.stem(depth_reshape)                         # (B*T, 192)
+            state_proj = self.v_proj(state_reshape)                     # (B*T, 192)
+            x = self.act(torch.cat([img_feat, state_proj], dim=-1))     # (B*T, 192*2)
+            x_seq = x.reshape(T, B, -1)                                 # (B, T, 192*2)
+            out_seq, h_new = self.gru(x_seq, hidden_states)             # (T, B, hidden_dim)
+            final_hidden = h_new[-1]                                    # (B, hidden_dim)
+            act = self.fc(self.act(final_hidden))                       # (B, num_actions)
 
         # inference mode (evaluate)
         else:
