@@ -68,6 +68,7 @@ class Avoid_task(VecEnv):
             "img_raw": torch.zeros((self.num_envs, *self.num_obs_img_raw), device=self.device, dtype=gs.tc_float),
             "img_pooling":torch.zeros((self.num_envs, *self.num_obs_img_pooling), device=self.device, dtype=gs.tc_float),
             "privileged": torch.zeros((self.num_envs, self.num_obs_privileged), device=self.device, dtype=gs.tc_float)}
+            ,batch_size=self.num_envs
         )
 
         # infos
