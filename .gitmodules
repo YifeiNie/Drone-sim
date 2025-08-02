@@ -1,0 +1,3 @@
+[submodule "algorithms/rl/rsl_rl"]
+	path = algorithms/rl/rsl_rl
+	url = git@github.com:YifeiNie/rsl_rl.git

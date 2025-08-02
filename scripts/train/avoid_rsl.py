@@ -37,7 +37,7 @@ def main():
     genesis_env = Genesis_env(
         env_config = env_config, 
         controller_config = controller_config,
-        load_map = True, 
+        load_map = False, 
         use_rc = False,
         render_cam = True,
         show_viewer = True, 
