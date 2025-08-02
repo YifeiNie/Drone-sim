@@ -3,13 +3,13 @@ task:
   yaw_lambda: -10.0 
   reward_scales:
     target: 20.0
-    go_forward: 10.0 
+    # go_forward: 10.0 
     smooth: -0.002 
     yaw: 0.002 
     angular: -0.02
-    crash: -3.0 
-    lazy: -1.0
-    safe: 0.2
+    crash: -10000.0 
+    lazy: -2.0
+    safe: 1.0
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
@@ -27,8 +27,8 @@ task:
   num_actions: 4                      # roll, pitch, yaw, thrust
   num_commands: 3                     # 3d position: x, y, z
   command_cfg:
-    pos_x_range: [-0.5, 0.5] 
-    pos_y_range: [-2.0, 2.0] 
+    pos_x_range: [-1.0, 1.0] 
+    pos_y_range: [-1.0, 1.0] 
     pos_z_range: [0.7, 1.1] 
 
   num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
@@ -50,8 +50,8 @@ train:
   load_run: -1 
   log_interval: 1 
   max_iterations: 2 
-  num_steps_per_env: 100 
-  max_iterations: 400
+  num_steps_per_env: 120 
+  max_iterations: 800
   record_interval: -1 
   resume: False 
   resume_path: null
@@ -68,7 +68,7 @@ train:
     entropy_coef: 0.004 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.0003 
+    learning_rate: 0.03 
     max_grad_norm: 1.0 
     num_learning_epochs: 5 
     num_mini_batches: 4 
@@ -83,7 +83,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [128, 128] 
-    init_noise_std: 0.02 
+    init_noise_std: 0.01 
     # noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 

@@ -150,7 +150,8 @@ class Avoid_task(VecEnv):
         
         
     def _resample_commands(self, envs_idx):
-        self.command_buf[envs_idx, 0] = gs_rand_float(*tuple(v + self.cur_iter/100 for v in self.command_cfg["pos_x_range"]), (len(envs_idx),), self.device)
+        self.command_buf[envs_idx, 0] = gs_rand_float(*tuple(v + self.cur_iter/200 for v in self.command_cfg["pos_x_range"]), (len(envs_idx),), self.device)
+        # self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
         self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
         self.command_buf[envs_idx, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(envs_idx),), self.device)
 
@@ -171,11 +172,11 @@ class Avoid_task(VecEnv):
             self.step_cnt = 0
             self.cur_iter = self.cur_iter + 1
             # extinct
-            self.reward_scales["target"] *= 1.05
-            self.reward_scales["crash"] *= 0.98
-            self.reward_scales["safe"] *= 0.99
-            self.reward_scales["go_forward"] *= 0.97
-            self.reward_scales["lazy"] *= 0.97
+            # self.reward_scales["target"] *= 1.05
+            # self.reward_scales["crash"] *= 0.98
+            # self.reward_scales["safe"] *= 0.99
+            # self.reward_scales["go_forward"] *= 0.97
+            # self.reward_scales["lazy"] *= 0.9
 
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
