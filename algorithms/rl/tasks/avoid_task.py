@@ -133,8 +133,8 @@ class Avoid_task(VecEnv):
         with torch.no_grad():
             v_to_pt = (self.min_distance_buf - self.last_min_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
         obj_avoidance_reward = barrier(distance, v_to_pt)
-        collide_reward = F.softplus(distance.mul(-1)).mul(v_to_pt)
-        return collide_reward * 2 - obj_avoidance_reward
+        collide_reward = F.softplus(distance * (1 - torch.sigmoid((distance - 0.8) * 10)).mul(-1)).mul(v_to_pt)
+        return collide_reward - obj_avoidance_reward
 
 
     def _reward_go_forward(self):
