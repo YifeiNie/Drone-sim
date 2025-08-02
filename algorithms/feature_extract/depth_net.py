@@ -12,13 +12,14 @@ class Depth(nn.Module):
         super().__init__()
 
         # input dim, dict[str, tuple[int]]
-        self.state_dim = input_dim["state"][0]      # quat, anglular rate, linear acceleration, last action
-        self.img_dim = input_dim["depth"]           # depth image, 12*16
+        self.num_envs = input_dim["state"][0]
+        self.state_dim = input_dim["state"][1:]      # quat, anglular rate, linear acceleration, last action
+        self.img_dim = input_dim["depth"][1:]          # depth image, 12*16
 
         self.output_dim = output_dim                # ctbr   
-        self.hidden_states = None
-        self.num_layers = num_layers
         
+        self.num_layers = num_layers
+        self.hidden_states = torch.zeros((self.num_layers, self.num_envs, 192), device="cuda")
         self.stem = nn.Sequential(
             nn.Conv2d(1, 32, 2, 2, bias=False),  # 1, 12, 16 -> 32, 6, 8
             nn.LeakyReLU(0.05),
@@ -29,7 +30,7 @@ class Depth(nn.Module):
             nn.Flatten(),
             nn.Linear(128*2*4, 192, bias=False),
         )
-        self.v_proj = nn.Linear(self.state_dim, 192)   
+        self.v_proj = nn.Linear(*self.state_dim, 192)   
         self.v_proj.weight.data.mul_(0.5)
 
         # self.gru = nn.GRUCell(192, 192)
@@ -75,7 +76,7 @@ class Depth(nn.Module):
         # inference mode (evaluate)
         else:
             img_feat = self.stem(obs["depth"])
-            x_tem = self.act(img_feat + self.v_proj(obs["state"]))     
+            x_tem = self.act(torch.cat([img_feat, self.v_proj(obs["state"])], dim=-1))     
             _, self.hidden_states = self.gru(x_tem.unsqueeze(0), self.hidden_states)
             act = self.fc(self.act(self.hidden_states)).squeeze(0)
 

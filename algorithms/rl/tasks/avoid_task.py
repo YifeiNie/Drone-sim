@@ -33,6 +33,7 @@ class Avoid_task(VecEnv):
         self.num_obs_state = task_config["num_obs_state"]
         self.num_obs_img_pooling = task_config["num_obs_img_pooling"]
         self.num_obs_img_raw = task_config["num_obs_img_raw"]
+        self.num_obs_privileged = task_config["num_obs_privileged"]
 
         # parameters
         self.max_episode_length = self.task_config.get("max_episode_length", 1500)
@@ -65,7 +66,8 @@ class Avoid_task(VecEnv):
         self.obs_buf = TensorDict({
             "state": torch.zeros((self.num_envs, self.num_obs_state), device=self.device, dtype=gs.tc_float),
             "img_raw": torch.zeros((self.num_envs, *self.num_obs_img_raw), device=self.device, dtype=gs.tc_float),
-            "img_pooling":torch.zeros((self.num_envs, *self.num_obs_img_pooling), device=self.device, dtype=gs.tc_float)}
+            "img_pooling":torch.zeros((self.num_envs, *self.num_obs_img_pooling), device=self.device, dtype=gs.tc_float),
+            "privileged": torch.zeros((self.num_envs, self.num_obs_privileged), device=self.device, dtype=gs.tc_float)}
         )
 
         # infos
@@ -229,7 +231,8 @@ class Avoid_task(VecEnv):
     def get_observations(self):
         group_obs =  TensorDict({
             "state": self.obs_buf["state"], 
-            "depth": self.obs_buf["img_pooling"]}, batch_size=self.num_envs
+            "depth": self.obs_buf["img_pooling"],
+            "privileged": self.obs_buf["privileged"]}, batch_size=self.num_envs
         )
         return group_obs
     
@@ -250,6 +253,19 @@ class Avoid_task(VecEnv):
         x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
         x = F.max_pool2d(x[:, None], 4, 4)
         self.obs_buf["img_pooling"] = x
+
+        self.obs_buf["privileged"] = torch.cat([
+                torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
+                self.genesis_env.drone.odom.body_quat,
+                torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
+                torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
+                self.last_actions,
+                self.genesis_env.drone.odom.world_pos,
+                self.genesis_env.drone.odom.world_linear_vel,
+                self.command_buf,
+            ],axis=-1,
+        )
+
 
 
     def get_privileged_observations(self):
