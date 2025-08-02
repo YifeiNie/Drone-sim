@@ -87,10 +87,11 @@ class Avoid_task(VecEnv):
     def _reward_target(self):
         target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
         target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
-        return target_reward
+        return target_reward + target_error_reward
 
-    def _reward_smooth(self):
+    def _reward_stable(self):
         smooth_reward = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
+        smooth_reward += torch.sigmoid(torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 2]))*5
         return smooth_reward
 
     def _reward_yaw(self):
@@ -140,7 +141,7 @@ class Avoid_task(VecEnv):
         with torch.no_grad():
             v_to_pt = (self.min_distance_buf - self.last_min_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
         obj_avoidance_reward = barrier(distance, v_to_pt)
-        collide_reward = F.softplus(distance * (1 - torch.sigmoid((distance - 0.8) * 10)).mul(-1)).mul(v_to_pt)
+        collide_reward = F.softplus(distance * (1 - torch.sigmoid((distance - 0.3) * 10)).mul(-1)).mul(v_to_pt)
         return collide_reward - obj_avoidance_reward
 
 
@@ -252,8 +253,8 @@ class Avoid_task(VecEnv):
         # dep = torch.abs(dep - 255)
         self.obs_buf["img_raw"] = dep
 
-        x = 3 / dep.clamp_(0.3, 24) - 0.6 + torch.randn_like(dep) * 0.02
-        x = F.max_pool2d(x[:, None], 4, 4)
+        x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
+        # x = F.max_pool2d(x[:, None], 4, 4)
         self.obs_buf["img_pooling"] = x
 
         self.obs_buf["privileged"] = torch.cat([
