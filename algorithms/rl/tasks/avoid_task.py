@@ -86,13 +86,13 @@ class Avoid_task(VecEnv):
 
     def _reward_target(self):
         target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
-        target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
-        return target_reward + target_error_reward
+        # target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
+        return target_reward
 
     def _reward_stable(self):
         smooth_reward = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
         smooth_reward += torch.sigmoid(torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 2]))*5
-        return smooth_reward
+        return -smooth_reward
 
     def _reward_yaw(self):
         yaw = self.genesis_env.drone.odom.body_euler[:, 2]
@@ -102,12 +102,12 @@ class Avoid_task(VecEnv):
 
     def _reward_angular(self):
         angular_reward = torch.norm(self.genesis_env.drone.odom.body_ang_vel / 3.14159, dim=1)
-        return angular_reward
+        return -angular_reward
 
     def _reward_crash(self):
         crash_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
         crash_reward[self.crash_condition_buf] = 1
-        return crash_reward
+        return -crash_reward
     
     def _reward_lazy(self):
         z = self.genesis_env.drone.odom.world_pos[:, 2]
@@ -116,7 +116,7 @@ class Avoid_task(VecEnv):
         inside_score = torch.sigmoid((z - z_min) * slope) * torch.sigmoid((z_max - z) * slope)
         lazy_reward = inside_score  
         
-        return lazy_reward
+        return -lazy_reward
 
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
