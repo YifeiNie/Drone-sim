@@ -1,34 +1,34 @@
 
 ang:
-  kp_r: 5500.0
+  kp_r: 6.0
   ki_r: 0.0
   kd_r: 0.0
   kf_r: 0.0
 
-  kp_p: 5500.0
+  kp_p: 6.0
   ki_p: 0.0
   kd_p: 0.0
   kf_p: 0.0
 
-  kp_y: 4500.0
-  ki_y: 0.0
+  kp_y: 4.8
+  ki_y: 0.1
   kd_y: 0.0
   kf_y: 0.0
 
 rat:
-  kp_r: 5500.0
-  ki_r: 1.0
-  kd_r: 100.0
+  kp_r: 0.15
+  ki_r: 0.0
+  kd_r: 0.1
   kf_r: 0.0
 
-  kp_p: 5500.0
-  ki_p: 1.0
-  kd_p: 100.0
+  kp_p: 0.15
+  ki_p: 0.0
+  kd_p: 0.1
   kf_p: 0.0
 
-  kp_y: 3500.0
-  ki_y: 1.0
-  kd_y: 100.0
+  kp_y: 0.15
+  ki_y: 0.0
+  kd_y: 0.1
   kf_y: 0.0
 
 pos:

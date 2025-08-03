@@ -67,7 +67,7 @@ class PIDcontroller:
         self.F_term_p = torch.zeros_like(self.P_term_p)                
         
         self.pid_freq = config.get("pid_exec_freq", 60)     # no use
-        self.base_rpm = config.get("base_rpm", 10000)
+        self.base_rpm = config.get("base_rpm", 14468.429183500699)
         self.dT = 1 / self.pid_freq                         # no use
         self.tpa_factor = 1
         self.tpa_rate = 0
@@ -86,19 +86,20 @@ class PIDcontroller:
 
 
     def mixer(self, action=None) -> torch.Tensor:
+        rc_command_tensor = torch.tensor(list(self.rc_command.values()), device=self.device , dtype=torch.float32)
+        throttle_rc = torch.clamp(rc_command_tensor[3] * 3.5, 0, 3.5)
         if action is None:
-            throttle = np.clip(self.rc_command["throttle"], 0, 1) * self.base_rpm * 2
+            throttle = throttle_rc
         else:
-            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1], 0, 1) * self.base_rpm * 2
-        self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 2.5, self.base_rpm * 2.5)
+            throttle = action[:, -1] * 0.5 + 0.5 + throttle_rc
         motor_outputs = torch.stack([
-            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
-            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
-            throttle + self.pid_output[:, 0] + self.pid_output[:, 1] - self.pid_output[:, 2],  # M3
-            throttle + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
+            - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
+            - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
+            + self.pid_output[:, 0] + self.pid_output[:, 1] - self.pid_output[:, 2],  # M3
+            + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
-        return torch.clamp(motor_outputs, min=1, max=self.base_rpm * 2.5)  # size: tensor(num_envs, 4)
+        return throttle + torch.tanh(motor_outputs)  # size: tensor(num_envs, 4)
 
     def pid_update_TpaFactor(self):
         if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
@@ -122,10 +123,11 @@ class PIDcontroller:
             else:                                     # undifined
                 print("undifined mode, do nothing!!")
                 return
-            self.pid_update_TpaFactor()
+            # self.pid_update_TpaFactor()
+            self.drone.set_propellels_rpm(torch.clamp((self.mixer(action)), 0, 3) * self.base_rpm)
         else:
             self.angle_controller(action)
-        self.drone.set_propellels_rpm(self.mixer(action))
+            self.drone.set_propellels_rpm(torch.clamp((self.mixer(action)), 0, 3) * self.base_rpm)
 
     def rate_controller(self, action=None): 
         """
@@ -138,7 +140,7 @@ class PIDcontroller:
         else:
             self.body_set_point[:] = action[:, :3] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         
-        cur_angle_rate_error = self.body_set_point * 10 - self.odom.body_ang_vel
+        cur_angle_rate_error = self.body_set_point * 15 - self.odom.body_ang_vel
         self.P_term_r[:] = (cur_angle_rate_error * self.kp_r) * self.tpa_factor
         self.I_term_r[:] = self.I_term_r + cur_angle_rate_error * self.ki_r
         self.D_term_r[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_r * self.tpa_factor    
@@ -156,7 +158,7 @@ class PIDcontroller:
         else:
             self.body_set_point[:] = -self.odom.body_euler + action[:, :3]
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = (self.body_set_point * 10 - self.odom.body_ang_vel)
+        cur_angle_rate_error = (self.body_set_point * 15 - self.odom.body_ang_vel)
 
         self.P_term_a[:] = (cur_angle_rate_error * self.kp_a) * self.tpa_factor
         self.I_term_a[:] = self.I_term_a + cur_angle_rate_error * self.ki_a
