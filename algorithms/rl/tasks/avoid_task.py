@@ -91,7 +91,7 @@ class Avoid_task(VecEnv):
 
     def _reward_stable(self):
         smooth_reward = torch.sum(torch.square(self.actions - self.last_actions), dim=1)
-        smooth_reward += torch.sigmoid(torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 2]))*5
+        # smooth_reward += torch.sigmoid(torch.abs(self.genesis_env.drone.odom.world_linear_vel[:, 2]))*5
         return -smooth_reward
 
     def _reward_yaw(self):
@@ -112,10 +112,8 @@ class Avoid_task(VecEnv):
     def _reward_altitude_hold(self):
         z = self.genesis_env.drone.odom.world_pos[:, 2]
         z_min, z_max = 0.35, 1.3
-        slope = 10.0  
-        altitude_hold_reward = torch.sigmoid((z - z_min) * slope) * torch.sigmoid((z_max - z) * slope)
-
-        return altitude_hold_reward
+        altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max)
+        return -altitude_hold_reward
 
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
@@ -174,9 +172,9 @@ class Avoid_task(VecEnv):
             # extinct
             # self.reward_scales["target"] *= 1.05
             # self.reward_scales["crash"] *= 0.98
-            # self.reward_scales["safe"] *= 0.99
+            # self.reward_scales["safe"] *= 1.03
             # self.reward_scales["go_forward"] *= 0.97
-            self.reward_scales["altitude_hold"] *= 0.8
+            # self.reward_scales["altitude_hold"] *= 0.9
 
         self.actions = torch.clip(action, -self.task_config["clip_actions"], self.task_config["clip_actions"])
         exec_actions = self.actions
