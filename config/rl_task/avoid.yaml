@@ -34,7 +34,7 @@ task:
   num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
   num_obs_img_raw: [1, 24, 32]        # raw is[1, 48, 64], after pooling is [1, 12, 16]
   num_obs_img_pooling: [1, 24, 32]    # raw is[1, 48, 64], after pooling is [1, 12, 16]
-  num_obs_privileged: 26              # quat*4, ang_rate*3, lin_acc*3, last_action*4, pos*3, target_pos*3, lin_vel*3
+  num_obs_privileged: 9               # pos*3, target_pos*3, lin_vel*3
   num_hiden_state: 192
 
   obs_scales:
