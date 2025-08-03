@@ -258,11 +258,6 @@ class Avoid_task(VecEnv):
         self.obs_buf["img_pooling"] = x
 
         self.obs_buf["privileged"] = torch.cat([
-                torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
-                self.genesis_env.drone.odom.body_quat,
-                torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
-                torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
-                self.last_actions,
                 self.genesis_env.drone.odom.world_pos,
                 self.genesis_env.drone.odom.world_linear_vel,
                 self.command_buf,

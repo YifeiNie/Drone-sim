@@ -91,7 +91,7 @@ import torch.nn.utils.rnn as rnn_utils
 def g_decay(x, alpha):
     return x * alpha + x.detach() * (1 - alpha)
 
-class Depth(nn.Module):
+class Actor_net(nn.Module):
     def __init__(self, input_dim, output_dim=4, num_layers=1):
         super().__init__()
 
@@ -114,6 +114,7 @@ class Depth(nn.Module):
             nn.Flatten(),
             nn.Linear(128*8*12, 192, bias=False),
         )
+
         self.v_proj = nn.Linear(*self.state_dim, 192)   
         self.fc = nn.Linear(192*2, self.output_dim, bias=False)
 
@@ -127,3 +128,40 @@ class Depth(nn.Module):
         act = torch.tanh(act)
         return act
 
+class Critic_net(nn.Module):
+    def __init__(self, input_dim, output_dim=4, num_layers=1):
+        super().__init__()
+
+        # input dim, dict[str, tuple[int]]
+        self.num_envs = input_dim["state"][0]
+        self.state_dim = input_dim["state"][1:]      # quat, anglular rate, linear acceleration, last action
+        self.img_dim = input_dim["depth"][1:]          # depth image, 12*16
+        
+        self.privileged_obs_dim = input_dim["privileged"][1:]
+        self.output_dim = output_dim                # ctbr   
+        
+        self.num_layers = num_layers
+        self.hidden_states = torch.zeros((self.num_layers, self.num_envs, 192), device="cuda")
+        self.stem = nn.Sequential(
+            nn.Conv2d(1, 32, 2, 2, bias=False),  # 1, 12, 16 -> 32, 6, 8
+            nn.LeakyReLU(0.05),
+            nn.Conv2d(32, 64, 3, bias=False),    # 32, 6, 8 -> 64, 4, 6
+            nn.LeakyReLU(0.05),
+            nn.Conv2d(64, 128, 3, bias=False),   # 64, 4, 6 -> 128, 2, 4
+            nn.LeakyReLU(0.05),
+            nn.Flatten(),
+            nn.Linear(128*8*12, 192, bias=False),
+        )
+
+        self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192)     
+        self.fc = nn.Linear(192*2, self.output_dim, bias=False)
+
+    def reset(self, dones=None, hidden_states=None):
+        pass
+
+    def forward(self, obs):
+        img_feat = self.stem(obs["depth"])
+        x_tem = torch.cat([img_feat, self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1))], dim=-1)  
+        act = self.fc(x_tem)
+        act = torch.tanh(act)
+        return act
