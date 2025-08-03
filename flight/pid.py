@@ -24,7 +24,7 @@ class PIDcontroller:
         self.num_envs = num_envs
         self.odom = odom
         self.use_rc = use_rc
-
+        self.thrust_compensate = config.get("thrust_compensate", 0.5)  
         # Shape: (n, 3)
         ang_cfg = config.get("ang", {})
         rat_cfg = config.get("rat", {})
@@ -92,10 +92,10 @@ class PIDcontroller:
         if action is None:
             throttle = throttle_rc
         else:
-            throttle_action = action[:, -1]
+            throttle_action = action[:, -1] + self.thrust_compensate
             throttle = throttle_rc + throttle_action
 
-        self.pid_output[:] = torch.clip(self.pid_output[:], -1, 1)
+        self.pid_output[:] = torch.clip(self.pid_output[:], -2, 2)
         motor_outputs = torch.stack([
            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2

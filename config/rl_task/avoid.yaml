@@ -2,14 +2,14 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 10.0
+    target: 15.0
     # go_forward: 10.0 
-    stable: -1 
+    stable: 0.1 
     # yaw: 0.001 
-    angular: -0.01
-    crash: -5.0 
-    altitude_hold: -1000.0
-    safe: 0.1
+    angular: 0.001
+    crash: 10 
+    altitude_hold: 10.0
+    safe: 1
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
@@ -63,12 +63,12 @@ train:
 
   algorithm: 
     class_name: PPO 
-    clip_param: 0.3 
+    clip_param: 0.2 
     desired_kl: 0.01 
-    entropy_coef: 0.000 
+    entropy_coef: 0.01 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.001 
+    learning_rate: 0.0003 
     max_grad_norm: 1.0 
     num_learning_epochs: 7 
     num_mini_batches: 4 
@@ -83,7 +83,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [256, 256]
-    init_noise_std: [0.02, 0.02, 0.02, 0.001]
+    init_noise_std: [1, 1, 1, 0.1]
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 
