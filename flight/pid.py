@@ -89,9 +89,10 @@ class PIDcontroller:
         rc_command_tensor = torch.tensor(list(self.rc_command.values()), device=self.device , dtype=torch.float32)
         throttle_rc = torch.clamp(rc_command_tensor[3] * 3.5, 0, 3.5)
         if action is None:
-            throttle = throttle_rc
+            throttle = np.clip(self.rc_command["throttle"], 0, 1) * self.base_rpm * 3
         else:
-            throttle = action[:, -1] * 0.5 + 0.5 + throttle_rc
+            throttle = torch.clamp(self.rc_command["throttle"] + action[:, -1] * 0.5 + 0.5, 0, 1) * self.base_rpm * 2
+        self.pid_output[:] = torch.clip(self.pid_output[:], -self.base_rpm * 2.5, self.base_rpm * 2.5)
         motor_outputs = torch.stack([
             - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
             - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
@@ -99,7 +100,7 @@ class PIDcontroller:
             + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
-        return throttle + torch.tanh(motor_outputs)  # size: tensor(num_envs, 4)
+        return torch.clamp(motor_outputs, min=0, max=self.base_rpm * 3)  # size: tensor(num_envs, 4)
 
     def pid_update_TpaFactor(self):
         if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
