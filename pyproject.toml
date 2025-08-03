@@ -11,7 +11,7 @@ packages = [
     { include = "sensors" },
     { include = "env" },
     { include = "algorithms" },
-    { include = "rsl_rl", from = "algorithms/rl/rsl_rl" }
+    { include = "rl", from = "algorithms/rl" }
 ]
 
 [tool.poetry.dependencies]

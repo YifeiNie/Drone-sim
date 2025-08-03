@@ -17,6 +17,9 @@ from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
 import numpy as np
 
+def gs_rand_float(lower, upper, shape, device):
+    return (upper - lower) * torch.rand(size=shape, device=device) + lower
+
 class Genesis_env :
     def __init__(
             self, 
@@ -51,6 +54,7 @@ class Genesis_env :
                 camera_fov = 40,
             ),
             vis_options = gs.options.VisOptions(
+                show_world_frame = False,
                 rendered_envs_idx = list(range(self.rendered_env_num)),
                 env_separate_rigid = True,
                 shadow = False,
@@ -164,10 +168,10 @@ class Genesis_env :
     def set_drone_camera(self):
         if (self.env_config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
-                res=(64, 48),
+                res=(32, 24),
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
-                fov=30,
+                fov=58,
                 GUI=True,
             )
         def set_FPV_cam_pos(self):
@@ -238,8 +242,12 @@ class Genesis_env :
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:
             reset_range = env_idx    
+        init_pos = torch.zeros((self.num_envs, 3), device=self.device)
+        init_pos[:, 0] = gs_rand_float(*self.env_config["init_x_range"], (self.num_envs,), self.device)
+        init_pos[:, 1] = gs_rand_float(*self.env_config["init_y_range"], (self.num_envs,), self.device)
+        init_pos[:, 2] = gs_rand_float(*self.env_config["init_z_range"], (self.num_envs,), self.device)
 
-        self.drone.set_pos(self.drone_init_pos[reset_range], envs_idx=reset_range)
+        self.drone.set_pos(init_pos[reset_range], envs_idx=reset_range)
         self.drone.zero_all_dofs_velocity(reset_range)
         self.drone.set_quat(self.drone_init_quat[reset_range], envs_idx=reset_range)
         self.drone.odom.reset(reset_range)

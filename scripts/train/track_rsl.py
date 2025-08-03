@@ -53,7 +53,6 @@ def main():
         genesis_env = genesis_env, 
         env_config = env_config, 
         task_config = task_config,
-        train_config = train_config,
     )
 
     runner = OnPolicyRunner(track_task, train_config, log_dir, device="cuda:0")
