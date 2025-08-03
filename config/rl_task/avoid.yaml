@@ -8,7 +8,7 @@ task:
     # yaw: 0.001 
     angular: -0.01
     crash: -5.0 
-    # lazy: -1.0
+    altitude_hold: -1000.0
     safe: 0.1
 
   termination_if_roll_greater_than: 180   # degree
