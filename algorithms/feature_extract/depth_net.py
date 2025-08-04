@@ -124,8 +124,7 @@ class Actor_net(nn.Module):
     def forward(self, obs):
         img_feat = self.stem(obs["depth"])
         x_tem = torch.cat([img_feat, self.v_proj(obs["state"])], dim=-1)  
-        act = self.fc(x_tem)
-        act = torch.tanh(act)
+        act = torch.tanh(self.fc(x_tem))
         return act
 
 class Critic_net(nn.Module):
@@ -162,6 +161,5 @@ class Critic_net(nn.Module):
     def forward(self, obs):
         img_feat = self.stem(obs["depth"])
         x_tem = torch.cat([img_feat, self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1))], dim=-1)  
-        act = self.fc(x_tem)
-        act = torch.tanh(act)
+        act = torch.tanh(self.fc(x_tem))
         return act

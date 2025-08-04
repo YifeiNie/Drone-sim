@@ -92,10 +92,10 @@ class PIDcontroller:
         if action is None:
             throttle = throttle_rc
         else:
-            throttle_action = action[:, -1] + self.thrust_compensate
+            throttle_action = action[:, -1] * 0.5 + self.thrust_compensate
             throttle = throttle_rc + throttle_action
 
-        self.pid_output[:] = torch.clip(self.pid_output[:], -2, 2)
+        self.pid_output[:] = torch.clip(self.pid_output[:], -1, 1)
         motor_outputs = torch.stack([
            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
@@ -103,7 +103,7 @@ class PIDcontroller:
            throttle + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
-        return torch.clamp(motor_outputs, min=0, max=3.5)  # size: tensor(num_envs, 4)
+        return torch.clamp(motor_outputs, min=0, max=3.0)  # size: tensor(num_envs, 4)
 
     def pid_update_TpaFactor(self):
         if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
@@ -129,7 +129,7 @@ class PIDcontroller:
                 print("undifined mode, do nothing!!")
                 return
         else:
-            self.rate_controller(action)
+            self.angle_controller(action)
             
         self.drone.set_propellels_rpm(self.mixer(action) * self.base_rpm)
 
@@ -160,7 +160,7 @@ class PIDcontroller:
         if action is None:
             self.body_set_point[:] = -self.odom.body_euler 
         else:
-            self.body_set_point[:] = -self.odom.body_euler + action[:, :3]
+            self.body_set_point[:] = -self.odom.body_euler + action[:, :3] * 3.14
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         cur_angle_rate_error = (self.body_set_point * 15 - self.odom.body_ang_vel)
 

@@ -44,39 +44,42 @@ class Odom:
         if (torch.any(self.has_none)):
             print("get_quat NaN env_idx:", torch.nonzero(self.has_none).squeeze())
             self.body_quat_inv[self.has_none] = inv_quat(self.body_quat[self.has_none])
+            self.reset(self.has_none.nonzero(as_tuple=False).flatten())
         else:
             self.body_quat_inv = inv_quat(self.body_quat)
 
-    def gyro_update(self):
-        self.cal_cur_quat()    
-        cur_ang_vel = self.drone.get_ang()      # (roll, pitch, yaw)
-        self.body_ang_vel[:] = cur_ang_vel
-        self.world_ang_vel[:] = transform_by_quat(cur_ang_vel, self.body_quat_inv)
+    def gyro_update(self):  
+        self.body_ang_vel[:] = self.drone.get_ang()     # (roll, pitch, yaw)
+        self.world_ang_vel[:] = transform_by_quat(self.body_ang_vel, self.body_quat_inv)
+
+    def vel_update(self):
+        self.last_world_linear_vel[:] = self.world_linear_vel
+        self.last_body_linear_vel[:] = self.body_linear_vel
+        self.world_linear_vel[:] = self.drone.get_vel()
+        self.body_linear_vel[:] = transform_by_quat(self.world_linear_vel, self.body_quat_inv)
 
     def acc_update(self, dT):
-        self.last_body_linear_vel[:] = self.body_linear_vel
-        world_linear_vel_temp = self.drone.get_vel()
-        self.world_linear_vel[:] = world_linear_vel_temp
-        self.body_linear_vel[:] = transform_by_quat(world_linear_vel_temp, self.body_quat_inv)
-
         self.body_linear_acc[:] = (self.body_linear_vel - self.last_body_linear_vel) / dT
-        self.world_linear_acc[:] = transform_by_quat(self.body_linear_acc, self.body_quat)
+        self.world_linear_acc[:] = (self.world_linear_vel - self.last_world_linear_vel) / dT
 
     def att_update(self):
+        self.cal_cur_quat()  
         self.body_euler[:] = quat_to_xyz(self.body_quat, rpy=True)
 
     def pos_update(self):
-        self.last_world_pos[:] = self.world_pos[:]
+        self.last_world_pos[:] = self.world_pos
         self.world_pos[:] = self.drone.get_pos()
 
     def odom_update(self):
-        self.gyro_update()
-        self.acc_update(time.perf_counter() - self.last_time)
         self.att_update()
+        self.gyro_update()
+        self.vel_update()
+        self.acc_update(time.perf_counter() - self.last_time)
         self.pos_update()
         self.last_time = time.perf_counter()
         
     def reset(self, env_idx):
+        # use reset when the status mutation occurs
         if env_idx is None:
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:
@@ -105,4 +108,8 @@ class Odom:
         # Reset the time
         self.last_time = time.perf_counter()
 
+        # self.odom_update()
+        self.last_world_pos[reset_range] = self.world_pos[reset_range]
+        self.last_world_linear_vel[reset_range] = self.world_linear_vel[reset_range]
+        self.last_body_linear_vel[reset_range] = self.body_linear_vel[reset_range]
 

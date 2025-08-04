@@ -2,21 +2,21 @@
 task:
   yaw_lambda: -10.0 
   reward_scales:
-    target: 15.0
-    # go_forward: 10.0 
-    stable: 0.1 
-    # yaw: 0.001 
+    target: 20.0
+    go_forward: 1.0 
+    stable: 0.01 
+    yaw: 0.001 
     angular: 0.001
-    crash: 10 
-    altitude_hold: 10.0
-    safe: 1
+    crash: 0.5 
+    altitude_hold: 1.0
+    # safe: 0.1
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
   termination_if_close_to_ground: 0.2 
-  termination_if_x_greater_than: 7.0 
-  termination_if_y_greater_than: 7.0 
-  termination_if_z_greater_than: 1.6
+  termination_if_x_greater_than: 12.0 
+  termination_if_y_greater_than: 12.0 
+  termination_if_z_greater_than: 1.0
   collision_if_dis_less_than: 0.1
 
   clip_actions: 1.0 
@@ -27,7 +27,7 @@ task:
   num_actions: 4                      # roll, pitch, yaw, thrust
   num_commands: 3                     # 3d position: x, y, z
   command_cfg:
-    pos_x_range: [-0.8, 0.8] 
+    pos_x_range: [-1.1, 0.6] 
     pos_y_range: [-1.2, 1.2] 
     pos_z_range: [0.7, 1.1] 
 
@@ -49,15 +49,14 @@ train:
   experiment_name: drone-hovering
   load_run: -1 
   log_interval: 1 
-  max_iterations: 2 
-  num_steps_per_env: 120 
-  max_iterations: 800
+  num_steps_per_env: 40
+  max_iterations: 3500
   record_interval: -1 
   resume: False 
   resume_path: null
   run_name:  
   runner_class_name: runner_class_name 
-  save_interval: 300 
+  save_interval: 5499 
   obs_groups: {"policy": ["state", "depth"], "critic": ["state", "depth"]} # maps observation groups to types. See `vec_env.py` for more information
 
 
@@ -68,9 +67,9 @@ train:
     entropy_coef: 0.01 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.0003 
+    learning_rate: 0.001 
     max_grad_norm: 1.0 
-    num_learning_epochs: 7 
+    num_learning_epochs: 5 
     num_mini_batches: 4 
     schedule: adaptive 
     use_clipped_value_loss: True 
@@ -83,7 +82,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [256, 256]
-    init_noise_std: [1, 1, 1, 0.1]
+    init_noise_std: [0.3, 0.3, 0.1, 0.0001]
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 

@@ -132,13 +132,14 @@ class Track_task(VecEnv):
         self.compute_reward()
         self.last_actions[:] = self.actions[:]
         self._resample_commands(self._at_target())
-        # self.update_extras()
+        # self._update_extras()
         self._update_obs()
 
         return self.get_observations(), self.reward_buf, self.reset_buf, self.extras
 
 
     def reset(self, env_idx=None):
+        # remember to reset all things!
         if env_idx is None:
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:

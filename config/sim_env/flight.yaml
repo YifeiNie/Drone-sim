@@ -1,4 +1,4 @@
-thrust_compensate: 0.2
+thrust_compensate: 0.7
 
 ang:
   kp_r: 0.06

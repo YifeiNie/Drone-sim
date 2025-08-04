@@ -77,6 +77,7 @@ class Avoid_task(VecEnv):
         self.extras = dict()  # extra information for logging
 
         self._register_reward_fun()
+        self._resample_commands()
 
     def compute_reward(self):
         for name, reward_func in self.reward_functions.items():
@@ -111,7 +112,7 @@ class Avoid_task(VecEnv):
 
     def _reward_altitude_hold(self):
         z = self.genesis_env.drone.odom.world_pos[:, 2]
-        z_min, z_max = 0.35, 1.3
+        z_min, z_max = 0.6, 1.1
         altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max)
         return -altitude_hold_reward
 
@@ -147,11 +148,15 @@ class Avoid_task(VecEnv):
         return go_forward_reward
         
         
-    def _resample_commands(self, envs_idx):
-        self.command_buf[envs_idx, 0] = gs_rand_float(*tuple(v + self.cur_iter/200 for v in self.command_cfg["pos_x_range"]), (len(envs_idx),), self.device)
-        # self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
-        self.command_buf[envs_idx, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(envs_idx),), self.device)
-        self.command_buf[envs_idx, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(envs_idx),), self.device)
+    def _resample_commands(self, envs_idx=None):
+        if envs_idx is None:
+            reset_range = torch.arange(self.num_envs, device=self.device)
+        else:
+            reset_range = envs_idx
+        self.command_buf[reset_range, 0] = gs_rand_float(*tuple(v + self.cur_iter/1100 for v in self.command_cfg["pos_x_range"]), (len(reset_range),), self.device)
+        # self.command_buf[reset_range, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(reset_range),), self.device)
+        self.command_buf[reset_range, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(reset_range),), self.device)
+        self.command_buf[reset_range, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(reset_range),), self.device)
 
     def _register_reward_fun(self):
         for name in self.reward_scales.keys():
@@ -181,16 +186,18 @@ class Avoid_task(VecEnv):
         
         if self.genesis_env.target is not None:
             self.genesis_env.target.set_pos(self.command_buf, zero_velocity=True, envs_idx=list(range(self.num_envs)))
+        
         self.genesis_env.step(exec_actions)
         self.episode_length_buf += 1
+        self.genesis_env.drone.odom.last_world_pos[self.reset_buf] = self.genesis_env.drone.odom.world_pos[self.reset_buf]
 
         self.last_pos_error[:] = self.command_buf - self.genesis_env.drone.odom.last_world_pos
         self.cur_pos_error[:] = self.command_buf - self.genesis_env.drone.odom.world_pos
 
-        self.last_distance_buf[:] = self.distance_buf[:]
+        self.last_distance_buf[:] = self.distance_buf
         self.distance_buf[:] = -torch.tensor(self.genesis_env.drone.entity_dis_list.lists).to(self.device)[:, :, 0]
         
-        self.last_min_distance_buf[:] = self.min_distance_buf[:]
+        self.last_min_distance_buf[:] = self.min_distance_buf
         self.min_distance_buf[:] = self.distance_buf.min(dim=1).values
  
         self.crash_condition_buf = (
@@ -208,9 +215,9 @@ class Avoid_task(VecEnv):
             | self.genesis_env.drone.odom.has_none
         )
         
-        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
+        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())    # use list to adapt to get_pos()...  
         self.compute_reward()
-        self.last_actions[:] = self.actions[:]
+        self.last_actions[:] = self.actions
         self._resample_commands(self._at_target())
         
         self._update_obs()
@@ -230,6 +237,8 @@ class Avoid_task(VecEnv):
         self.reset_buf[reset_range] = True
         self._update_extras(reset_range)
         self._resample_commands(reset_range)
+        self.cur_pos_error[reset_range] = self.command_buf[reset_range] - self.genesis_env.drone.odom.world_pos[reset_range]
+        self.last_pos_error[reset_range] = self.cur_pos_error[reset_range]
         return self.get_observations()
 
     def get_observations(self):
