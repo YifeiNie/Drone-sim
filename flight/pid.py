@@ -129,7 +129,7 @@ class PIDcontroller:
                 print("undifined mode, do nothing!!")
                 return
         else:
-            self.angle_controller(action)
+            self.rate_controller(action)
             
         self.drone.set_propellels_rpm(self.mixer(action) * self.base_rpm)
 
@@ -160,7 +160,7 @@ class PIDcontroller:
         if action is None:
             self.body_set_point[:] = -self.odom.body_euler 
         else:
-            self.body_set_point[:] = -self.odom.body_euler + action[:, :3] * 3.14
+            self.body_set_point[:] = -self.odom.body_euler + action[:, :3]
         self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
         cur_angle_rate_error = (self.body_set_point * 15 - self.odom.body_ang_vel)
 

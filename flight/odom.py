@@ -11,6 +11,7 @@ class Odom:
         self.device = device
         self.drone = None
         self.num_envs = num_envs
+        self.has_none = torch.zeros((self.num_envs,), device=self.device, dtype=bool)
 
         # body data
         self.body_euler = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
@@ -39,9 +40,12 @@ class Odom:
 
     def cal_cur_quat(self):
         self.body_quat[:] = self.drone.get_quat()
-        if(torch.isnan(self.body_quat).any()):
-            print("get_quat NaN:", torch.isnan(self.body_quat).any(), self.body_quat)
-        self.body_quat_inv[:] = inv_quat(self.body_quat)
+        self.has_none[:] = torch.isnan(self.body_quat).any(dim=1)
+        if (torch.any(self.has_none)):
+            print("get_quat NaN env_idx:", torch.nonzero(self.has_none).squeeze())
+            self.body_quat_inv[self.has_none] = inv_quat(self.body_quat[self.has_none])
+        else:
+            self.body_quat_inv = inv_quat(self.body_quat)
 
     def gyro_update(self):
         self.cal_cur_quat()    

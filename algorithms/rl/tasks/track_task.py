@@ -123,7 +123,11 @@ class Track_task(VecEnv):
             | (torch.abs(self.cur_pos_error[:, 2]) > self.task_config["termination_if_z_greater_than"])
             # | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
         )
-        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition_buf
+        self.reset_buf = (
+            (self.episode_length_buf > self.max_episode_length) 
+            | self.crash_condition_buf 
+            | self.genesis_env.drone.odom.has_none
+        )
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
         self.compute_reward()
         self.last_actions[:] = self.actions[:]

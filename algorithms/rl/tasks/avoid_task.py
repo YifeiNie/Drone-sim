@@ -202,8 +202,12 @@ class Avoid_task(VecEnv):
             | (self.genesis_env.drone.odom.world_pos[:, 2] < self.task_config["termination_if_close_to_ground"])
             | (self.min_distance_buf < self.task_config["collision_if_dis_less_than"]) 
         )
-
-        self.reset_buf = (self.episode_length_buf > self.max_episode_length) | self.crash_condition_buf
+        self.reset_buf = (
+            (self.episode_length_buf > self.max_episode_length) 
+            | self.crash_condition_buf 
+            | self.genesis_env.drone.odom.has_none
+        )
+        
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())
         self.compute_reward()
         self.last_actions[:] = self.actions[:]
