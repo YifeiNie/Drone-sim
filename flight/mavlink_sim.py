@@ -3,6 +3,7 @@ import time
 import yaml
 from pymavlink import mavutil
 from enum import IntFlag
+import torch
 
 class MODE(IntFlag):
     ANGLE       = 0
@@ -29,15 +30,9 @@ rc_data = {
     "ch8": None,
 }
 
-rc_command = {
-    "roll": 0.0,
-    "pitch": 0.0,
-    "yaw": 0.0,
-    "throttle": 0.0,
-    "ANGLE": 1,          # 0: angel, 1: angle_rate, 2: not defined
-    "ARM": 0,            # 0: disarmed, 1: armed
-    "OFFBOARD": 0,       # 0: manunal,  1: offboard
-}
+# [roll, pitch, yaw, throttle, angle_mode, arm_mode, offboard_mode]
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+rc_command = torch.zeros((7, ), device=device, dtype=torch.float32)  
 
 def clamp(min_val, max_val, value):
     return max(min_val, min(value, max_val))
@@ -67,17 +62,17 @@ def mavlink_receive_thread(device="/dev/ttyUSB0", baudrate=2000000, rc_config=No
                         "ch8": msg.chan8_raw,
                     })
                     # print("RC Data:", rc_data)
-                    rc_command["roll"] =      clamp(-1, 1, (rc_data[rc_config.get("ROLL", "ch1")] - 1500) / 500)      # scale to range [-1.0, 1.0]
-                    rc_command["pitch"] =     clamp(-1, 1, (rc_data[rc_config.get("PITCH", "ch2")] - 1500) / 500)
-                    rc_command["yaw"] =       clamp(-1, 1, (rc_data[rc_config.get("YAW", "ch3")] - 1500) / 500)
-                    rc_command["throttle"] =  clamp(0, 1, (rc_data[rc_config.get("throttle", "ch4")] - 1000) / 1000)
+                    rc_command[0] = clamp(-1, 1, (rc_data[rc_config.get("ROLL", "ch1")] - 1500) / 500)      # scale to range [-1.0, 1.0]
+                    rc_command[1] = clamp(-1, 1, (rc_data[rc_config.get("PITCH", "ch2")] - 1500) / 500)
+                    rc_command[2] = clamp(-1, 1, (rc_data[rc_config.get("YAW", "ch3")] - 1500) / 500)
+                    rc_command[3] = clamp(0, 1, (rc_data[rc_config.get("throttle", "ch4")] - 1000) / 1000)
                     temp_angle = rc_data[rc_config.get("ANGLE", "ch6")]
                     temp_arm = rc_data[rc_config.get("ARM", "ch5")]
                     temp_offboard = rc_data[rc_config.get("OFFBOARD", "ch8")]
                     
-                    rc_command["ANGLE"] = 0 if temp_angle < 1400 else 1 if temp_angle <= 1700 else 0  
-                    rc_command["ARM"] = 1 if temp_arm > 1400 else 0          
-                    rc_command["OFFBOARD"] = 0 if temp_offboard < 1400 else 1     
+                    rc_command[4] = 0 if temp_angle < 1400 else 1 if temp_angle <= 1700 else 0  
+                    rc_command[5] = 1 if temp_arm > 1400 else 0          
+                    rc_command[6] = 0 if temp_offboard < 1400 else 1     
 
                     # print("RC Command:", rc_command)
 

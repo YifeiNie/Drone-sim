@@ -79,23 +79,27 @@ class PIDcontroller:
 
         self.body_set_point = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.pid_output = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.cur_setpoint_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.last_setpoint_error = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
         self.drone = None
+
+        self.cnt = 0
 
     def set_drone(self, drone):
         self.drone = drone
 
 
     def mixer(self, action=None) -> torch.Tensor:
-        rc_command_tensor = torch.tensor(list(self.rc_command.values()), device=self.device , dtype=torch.float32)
-        throttle_rc = torch.clamp(rc_command_tensor[3] * 3, 0, 3)
-        
+
+        throttle_rc = torch.clamp(self.rc_command[3] * 3, 0, 3)
         if action is None:
             throttle = throttle_rc
         else:
+            action[:] = 0
             throttle_action = action[:, -1] * 0.5 + self.thrust_compensate
             throttle = throttle_rc + throttle_action
 
-        self.pid_output[:] = torch.clip(self.pid_output[:], -1, 1)
+        self.pid_output[:] = torch.clip(self.pid_output[:], -1.5, 1.0)
         motor_outputs = torch.stack([
            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
@@ -106,26 +110,31 @@ class PIDcontroller:
         return torch.clamp(motor_outputs, min=0, max=3.0)  # size: tensor(num_envs, 4)
 
     def pid_update_TpaFactor(self):
-        if (self.rc_command["throttle"] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
-            if (self.rc_command["throttle"] < 1.0): 
-                self.tpa_rate *= (self.rc_command["throttle"] - 0.35) / (1.0 - 0.35);            
+        if (self.rc_command[3] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
+            if (self.rc_command[3] < 1.0): 
+                self.tpa_rate *= (self.rc_command[3] - 0.35) / (1.0 - 0.35);            
             else:
                 self.tpa_rate = 0.0
             self.tpa_factor = 1.0 - self.tpa_rate
 
     def step(self, action=None):
-        self.odom.odom_update()
+        self.cnt += 1
+        if self.cnt % 60 == 0:     # controller test
+            quat = random_quaternion(self.num_envs)
+            self.drone.set_quat(quat)
+            self.cnt = 0
 
+        self.odom.odom_update()
         if self.use_rc is True:
             self.pid_update_TpaFactor()
-            if(self.rc_command["ARM"] == 0):
+            if(self.rc_command[5] == 0):
                 self.drone.set_propellels_rpm(torch.zeros((self.num_envs, 4), device=self.device, dtype=gs.tc_float))
                 return
-            if self.rc_command["ANGLE"] == 0:         # angle mode
+            if self.rc_command[4] == 0:         # angle mode
                 self.angle_controller(action)
-            elif self.rc_command["ANGLE"] == 1:       # angle rate mode
+            elif self.rc_command[4] == 1:       # angle rate mode
                 self.rate_controller(action)
-            else:                                     # undifined
+            else:                               # undifined
                 print("undifined mode, do nothing!!")
                 return
         else:
@@ -140,16 +149,18 @@ class PIDcontroller:
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         if action is None:
-            self.body_set_point[:] = torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)
+            self.body_set_point[:] = self.rc_command[:3] * 15   # max 15 rad/s
         else:
-            self.body_set_point[:] = action[:, :3] + torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        
-        cur_angle_rate_error = self.body_set_point * 15 - self.odom.body_ang_vel
-        self.P_term_r[:] = (cur_angle_rate_error * self.kp_r) * self.tpa_factor
-        self.I_term_r[:] = self.I_term_r + cur_angle_rate_error * self.ki_r
+            self.body_set_point[:] = action[:, :3] * 15
+
+        self.last_setpoint_error[:] = self.cur_setpoint_error
+        self.cur_setpoint_error[:] = self.body_set_point - self.odom.body_ang_vel
+        self.P_term_r[:] = (self.cur_setpoint_error * self.kp_r) * self.tpa_factor
+        self.I_term_r[:] = torch.clamp(self.I_term_r + self.cur_setpoint_error * self.ki_r, -0.5, 0.5)
         self.D_term_r[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_r * self.tpa_factor    
-        self.last_body_ang_vel[:] = self.odom.body_ang_vel
+
         self.pid_output[:] = (self.P_term_r + self.I_term_r + self.D_term_r)
+        self.last_body_ang_vel[:] = self.odom.body_ang_vel
 
     def angle_controller(self, action=None):  
         """
@@ -158,19 +169,18 @@ class PIDcontroller:
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         if action is None:
-            self.body_set_point[:] = -self.odom.body_euler 
+            self.body_set_point[:] = -self.odom.body_euler + self.rc_command[:3] * 1.57  # max 90.0 degree
         else:
-            self.body_set_point[:] = -self.odom.body_euler + action[:, :3] * 3.14
-        self.body_set_point[:] += torch.tensor(list(self.rc_command.values())[:3]).repeat(self.num_envs, 1)      # index 1:roll, 2:pitch, 3:yaw, 4:throttle
-        cur_angle_rate_error = (self.body_set_point * 15 - self.odom.body_ang_vel)
+            self.body_set_point[:] = -self.odom.body_euler
 
-        self.P_term_a[:] = (cur_angle_rate_error * self.kp_a) * self.tpa_factor
-        self.I_term_a[:] = self.I_term_a + cur_angle_rate_error * self.ki_a
+        self.last_setpoint_error[:] = self.cur_setpoint_error
+        self.cur_setpoint_error[:] = (self.body_set_point * 5 - self.odom.body_ang_vel)
+        self.P_term_a[:] = (self.cur_setpoint_error[:] * self.kp_a) * self.tpa_factor
+        self.I_term_a[:] = torch.clamp(self.I_term_a + self.cur_setpoint_error[:] * self.ki_a, -0.5, 0.5)
         self.D_term_a[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_a * self.tpa_factor    
-        # TODO feedforward term 
-        self.last_body_ang_vel[:] = self.odom.body_ang_vel
+        
         self.pid_output[:] = (self.P_term_a + self.I_term_a + self.D_term_a)
-
+        self.last_body_ang_vel[:] = self.odom.body_ang_vel
 
     # def position_controller(self, action):
     #     action = torch.as_tensor(action, dtype=gs.tc_float)
@@ -221,7 +231,29 @@ class PIDcontroller:
         self.tpa_factor = 1
         self.tpa_rate = 0
         # Reset the RC command values if necessary
-        if self.rc_command:
-            self.rc_command["throttle"] = 0
-            self.rc_command["ANGLE"] = 0
-            self.rc_command["ARM"] = 0
+        if self.use_rc:
+            self.rc_command = 0
+
+import math
+
+def random_quaternion(num_envs=1, device="cuda"):
+    max_rad = math.radians(70)
+    roll  = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad
+    pitch = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad
+    yaw   = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad / 10
+
+    cy = torch.cos(yaw * 0.5)
+    sy = torch.sin(yaw * 0.5)
+    cp = torch.cos(pitch * 0.5)
+    sp = torch.sin(pitch * 0.5)
+    cr = torch.cos(roll * 0.5)
+    sr = torch.sin(roll * 0.5)
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    quat = torch.cat([w, x, y, z], dim=1)
+    quat = quat / quat.norm(dim=1, keepdim=True)
+    return quat

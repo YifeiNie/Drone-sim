@@ -1,17 +1,17 @@
-thrust_compensate: 0.7
+thrust_compensate: 1.0
 
 ang:
-  kp_r: 0.06
-  ki_r: 0.0
+  kp_r: 0.2
+  ki_r: 0.02
   kd_r: 0.001
   kf_r: 0.0
 
-  kp_p: 0.06
-  ki_p: 0.0
+  kp_p: 0.2
+  ki_p: 0.02
   kd_p: 0.001
   kf_p: 0.0
 
-  kp_y: 0.06                                           
+  kp_y: 0.2                                           
   ki_y: 0.0
   kd_y: 0.0
   kf_y: 0.0
