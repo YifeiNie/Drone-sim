@@ -34,7 +34,7 @@ def main():
         rl_config = yaml.load(file, Loader=yaml.FullLoader)
 
     with open("config/sim_env/flight.yaml", "r") as file:
-        controller_config = yaml.load(file, Loader=yaml.FullLoader)
+        flight_config = yaml.load(file, Loader=yaml.FullLoader)
 
     task_config = rl_config["task"]
     train_config = rl_config["train"]
@@ -42,7 +42,7 @@ def main():
 
     genesis_env = Genesis_env(
         env_config = env_config, 
-        controller_config = controller_config,
+        flight_config = flight_config,
         load_map = False, 
         use_rc = False,
         render_cam = False,

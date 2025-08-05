@@ -33,12 +33,12 @@ def main():
     with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     with open("config/sim_env/flight.yaml", "r") as file:
-        controller_config = yaml.load(file, Loader=yaml.FullLoader)
+        flight_config = yaml.load(file, Loader=yaml.FullLoader)
 
 
     genesis_env = Genesis_env(
         env_config = env_config, 
-        controller_config = controller_config,
+        flight_config = flight_config,
         viewer_follow_drone = True,
         use_rc = True,
         load_map = True,

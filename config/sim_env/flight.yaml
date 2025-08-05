@@ -1,17 +1,17 @@
-thrust_compensate: 1.0
+
 # =========== pid_param =============
 ang:
-  kp_r: 0.2
-  ki_r: 0.02
-  kd_r: 0.001
+  kp_r: 5000
+  ki_r: 0.005
+  kd_r: 0.0001
   kf_r: 0.0
 
-  kp_p: 0.2
-  ki_p: 0.02
-  kd_p: 0.001
+  kp_p: 5000
+  ki_p: 0.005
+  kd_p: 0.0001
   kf_p: 0.0
 
-  kp_y: 0.2                                           
+  kp_y: 3000                                          
   ki_y: 0.0
   kd_y: 0.0
   kf_y: 0.0
@@ -52,10 +52,12 @@ pid_exec_freq: 60
 
 # =========== drone_param =============
 # see in assets/drone_urdf/cf2x.urdf
+thrust_compensate: 1.4
 weight: 0.5   
+motor_inertia: 2.6e-07
 g: 9.81   
 kf: 3.16e-10
-base_rpm: 14468.429183500699   # equal to (m*g/4*kf)^0.5 * 60 / (2*pi)
+base_rpm: 62293.9641914   # equal to (m*g/4*kf)^0.5 * 60 / (2*pi)
 use_RC: True
 inertia_matrix:       # no use
   - [0.0014, 0.0,     0.0,     0.0]

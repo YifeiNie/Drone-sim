@@ -49,8 +49,8 @@ train:
   experiment_name: drone-hovering
   load_run: -1 
   log_interval: 1 
-  num_steps_per_env: 400
-  max_iterations: 3500
+  num_steps_per_env: 30
+  max_iterations: 4000
   record_interval: -1 
   resume: False 
   resume_path: null
@@ -82,7 +82,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [256, 256]
-    init_noise_std: [0.05, 0.05, 0.1, 0.01]
+    init_noise_std: [1, 1, 1, 0.3]
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 

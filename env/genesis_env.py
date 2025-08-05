@@ -24,7 +24,7 @@ class Genesis_env :
     def __init__(
             self, 
             env_config, 
-            controller_config,
+            flight_config,
             viewer_follow_drone = False,
             load_map = False, 
             use_rc = False,
@@ -34,7 +34,7 @@ class Genesis_env :
         self.render_cam = render_cam
         self.use_rc = use_rc
         self.env_config = env_config
-        self.controller_config = controller_config
+        self.flight_config = flight_config
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_envs = self.env_config.get("num_envs", 1)
@@ -86,7 +86,11 @@ class Genesis_env :
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="assets/drone_urdf/drone.urdf", pos=(-0.6, 0.0, 0.4))
+        drone = gs.morphs.Drone(
+            file="assets/drone_urdf/drone.urdf", 
+            pos=(-0.6, 0.0, 0.4), 
+            default_armature=self.flight_config.get("motor_inertia", 2.6e-07)
+        )
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -191,7 +195,7 @@ class Genesis_env :
             num_envs = self.env_config.get("num_envs", 1), 
             rc_command = rc_command,
             odom = self.drone.odom, 
-            config = self.controller_config,
+            config = self.flight_config,
             device = torch.device("cuda"),
             use_rc = self.use_rc
         )

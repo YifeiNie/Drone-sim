@@ -91,15 +91,15 @@ class PIDcontroller:
 
     def mixer(self, action=None) -> torch.Tensor:
 
-        throttle_rc = torch.clamp(self.rc_command[3] * 3, 0, 3)
+        throttle_rc = torch.clamp(self.rc_command[3] * 3, 0, 3) * self.base_rpm
         if action is None:
             throttle = throttle_rc
         else:
-            action[:] = 0
-            throttle_action = action[:, -1] * 0.5 + self.thrust_compensate
+            throttle_action = torch.clamp((action[:, -1]*0.5 + self.thrust_compensate), min=0.1, max=3.0) * self.base_rpm
+
             throttle = throttle_rc + throttle_action
 
-        self.pid_output[:] = torch.clip(self.pid_output[:], -1.0, 1.0)
+        # self.pid_output[:] = torch.clip(self.pid_output[:], -3.0, 3.0)
         motor_outputs = torch.stack([
            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2
@@ -107,7 +107,7 @@ class PIDcontroller:
            throttle + self.pid_output[:, 0] - self.pid_output[:, 1] + self.pid_output[:, 2],  # M4
         ], dim = 1)
 
-        return torch.clamp(motor_outputs, min=0, max=3.0)  # size: tensor(num_envs, 4)
+        return torch.clamp(motor_outputs, min=1, max=self.base_rpm * 5.0)  # size: tensor(num_envs, 4)
 
     def pid_update_TpaFactor(self):
         if (self.rc_command[3] > 0.35):       # 0.35 is the tpa_breakpoint, the same as Betaflight, 
@@ -118,12 +118,12 @@ class PIDcontroller:
             self.tpa_factor = 1.0 - self.tpa_rate
 
     def step(self, action=None):
+        # controller test
         # self.cnt += 1
-        # if self.cnt % 60 == 0:     # controller test
+        # if self.cnt % 40 == 0:     
         #     quat = random_quaternion(self.num_envs)
         #     self.drone.set_quat(quat)
         #     self.cnt = 0
-
         self.odom.odom_update()
         if self.use_rc is True:
             self.pid_update_TpaFactor()
@@ -140,7 +140,7 @@ class PIDcontroller:
         else:
             self.angle_controller(action)
             
-        self.drone.set_propellels_rpm(self.mixer(action) * self.base_rpm)
+        self.drone.set_propellels_rpm(self.mixer(action))
 
     def rate_controller(self, action=None): 
         """
@@ -169,12 +169,12 @@ class PIDcontroller:
         :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         if action is None:
-            self.body_set_point[:] = -self.odom.body_euler + self.rc_command[:3] * 1.57  # max 90.0 degree
+            self.body_set_point[:] = -self.odom.body_euler + self.rc_command[:3]  
         else:
-            self.body_set_point[:] = -self.odom.body_euler
+            self.body_set_point[:] = -self.odom.body_euler + action[:, :3]  # action is in rad, like [[roll, pitch, yaw, thrust]] if num_envs = 1
 
         self.last_setpoint_error[:] = self.cur_setpoint_error
-        self.cur_setpoint_error[:] = (self.body_set_point * 5 - self.odom.body_ang_vel)
+        self.cur_setpoint_error[:] = (self.body_set_point * 10 - self.odom.body_ang_vel)
         self.P_term_a[:] = (self.cur_setpoint_error[:] * self.kp_a) * self.tpa_factor
         self.I_term_a[:] = torch.clamp(self.I_term_a + self.cur_setpoint_error[:] * self.ki_a, -0.5, 0.5)
         self.D_term_a[:] = (self.last_body_ang_vel - self.odom.body_ang_vel) * self.kd_a * self.tpa_factor    
@@ -237,7 +237,7 @@ class PIDcontroller:
 import math
 
 def random_quaternion(num_envs=1, device="cuda"):
-    max_rad = math.radians(70)
+    max_rad = math.radians(80)
     roll  = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad
     pitch = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad
     yaw   = (torch.rand(num_envs, 1, device=device) * 2 - 1) * max_rad / 10

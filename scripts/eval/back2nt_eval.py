@@ -48,8 +48,8 @@ class Model(nn.Module):
 
 
 class Genesis_env :
-    def __init__(self, config, controller_config):
-        self.controller_config = controller_config
+    def __init__(self, config, flight_config):
+        self.flight_config = flight_config
         self.config = config
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_envs = config.get("num_envs", 1)
@@ -176,7 +176,7 @@ class Genesis_env :
 
     def set_drone_controller(self):
         pid = PIDcontroller(
-            config = self.controller_config,
+            config = self.flight_config,
             num_envs = self.config.get("num_envs", 1), 
             rc_command = rc_command,
             odom = self.drone.odom, 
@@ -250,14 +250,14 @@ if __name__ == "__main__" :
     with open("config/sim_env/env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     with open("config/sim_env/flight.yaml", "r") as file:
-        controller_config = yaml.load(file, Loader=yaml.FullLoader)
+        flight_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
     model.to("cuda")
     model.load_state_dict(torch.load("logs/back2nt/checkpoint0004.pth", map_location='cuda'))
     model.eval()
     genesis_env = Genesis_env(
         config = env_config, 
-        controller_config = controller_config, 
+        flight_config = flight_config, 
     )
     genesis_env.step()      # avoid depth image None
     genesis_env.step()
