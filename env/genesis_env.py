@@ -86,7 +86,7 @@ class Genesis_env :
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="assets/drone_urdf/cf2x.urdf", pos=(-0.6, 0.0, 0.4))
+        drone = gs.morphs.Drone(file="assets/drone_urdf/drone.urdf", pos=(-0.6, 0.0, 0.4))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer

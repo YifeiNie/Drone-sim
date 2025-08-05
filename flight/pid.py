@@ -99,7 +99,7 @@ class PIDcontroller:
             throttle_action = action[:, -1] * 0.5 + self.thrust_compensate
             throttle = throttle_rc + throttle_action
 
-        self.pid_output[:] = torch.clip(self.pid_output[:], -1.5, 1.0)
+        self.pid_output[:] = torch.clip(self.pid_output[:], -1.0, 1.0)
         motor_outputs = torch.stack([
            throttle - self.pid_output[:, 0] - self.pid_output[:, 1] - self.pid_output[:, 2],  # M1
            throttle - self.pid_output[:, 0] + self.pid_output[:, 1] + self.pid_output[:, 2],  # M2

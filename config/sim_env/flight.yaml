@@ -55,7 +55,7 @@ pid_exec_freq: 60
 weight: 0.5   
 g: 9.81   
 kf: 3.16e-10
-base_rpm: 294863.54   # equal to (m*g/4*kf)^0.5 * 60 / (2*pi)
+base_rpm: 14468.429183500699   # equal to (m*g/4*kf)^0.5 * 60 / (2*pi)
 use_RC: True
 inertia_matrix:       # no use
   - [0.0014, 0.0,     0.0,     0.0]
