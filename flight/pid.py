@@ -118,11 +118,11 @@ class PIDcontroller:
             self.tpa_factor = 1.0 - self.tpa_rate
 
     def step(self, action=None):
-        self.cnt += 1
-        if self.cnt % 60 == 0:     # controller test
-            quat = random_quaternion(self.num_envs)
-            self.drone.set_quat(quat)
-            self.cnt = 0
+        # self.cnt += 1
+        # if self.cnt % 60 == 0:     # controller test
+        #     quat = random_quaternion(self.num_envs)
+        #     self.drone.set_quat(quat)
+        #     self.cnt = 0
 
         self.odom.odom_update()
         if self.use_rc is True:

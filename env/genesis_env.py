@@ -86,7 +86,7 @@ class Genesis_env :
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
         # add drone
-        drone = gs.morphs.Drone(file="urdf/drones/cf2x.urdf", pos=(-0.6, 0.0, 0.4))
+        drone = gs.morphs.Drone(file="assets/drone_urdf/cf2x.urdf", pos=(-0.6, 0.0, 0.4))
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
@@ -110,7 +110,7 @@ class Genesis_env :
         if self.env_config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="assets/entity_src/sphere/sphere.obj",
+                    file="assets/sphere/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,
