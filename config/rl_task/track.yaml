@@ -14,7 +14,7 @@ task:
   termination_if_close_to_ground: 0.1 
   termination_if_x_greater_than: 3.0 
   termination_if_y_greater_than: 3.0 
-  termination_if_z_greater_than: 2.0 
+  termination_if_z_greater_than: 0.8 
 
   clip_actions: 1.0 
   target_thr: 0.1
@@ -24,9 +24,9 @@ task:
   num_commands: 3                 # 3d position: x, y, z
 
   command_cfg:
-    pos_x_range: [-1.0, 1.0] 
-    pos_y_range: [-1.0, 1.0] 
-    pos_z_range: [1.0, 1.0] 
+    pos_x_range: [-1.81, -0.19] 
+    pos_y_range: [-1.2, 1.2] 
+    pos_z_range: [0.7, 1.1] 
 
   num_obs: 17                     # pos*3, quat*4, vel*3, ang_rate*3, last_action*4 
   obs_scales:

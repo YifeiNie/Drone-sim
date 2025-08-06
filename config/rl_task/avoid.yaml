@@ -49,7 +49,7 @@ train:
   experiment_name: drone-hovering
   load_run: -1 
   log_interval: 1 
-  num_steps_per_env: 30
+  num_steps_per_env: 100
   max_iterations: 4000
   record_interval: -1 
   resume: False 
