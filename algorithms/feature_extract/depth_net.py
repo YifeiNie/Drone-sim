@@ -112,12 +112,16 @@ class Actor_net(nn.Module):
             nn.Conv2d(64, 128, 3, bias=False),   # 64, 4, 6 -> 128, 2, 4
             nn.LeakyReLU(0.05),
             nn.Flatten(),
-            nn.Linear(128*2*4, 192, bias=False),
+            nn.Linear(128*2*4, 128, bias=False),
         )
-        self.fc = nn.Linear(192, self.output_dim, bias=False)
-        self.act = nn.LeakyReLU(0.05)
+        self.fc = nn.Linear(128, self.output_dim, bias=False)
+        # self.act = nn.LeakyReLU(0.05)
         # self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192) 
-        self.v_proj = nn.Linear(self.state_dim[0], 192) 
+        self.act = nn.Tanh()
+        self.v_proj = nn.Linear(self.state_dim[0], 128) 
+
+        for param in self.stem.parameters():
+            param.requires_grad = False
 
     def reset(self, dones=None, hidden_states=None):
         pass
@@ -152,12 +156,15 @@ class Critic_net(nn.Module):
             nn.Conv2d(64, 128, 3, bias=False),   # 64, 4, 6 -> 128, 2, 4
             nn.LeakyReLU(0.05),
             nn.Flatten(),
-            nn.Linear(128*2*4, 192, bias=False),
+            nn.Linear(128*2*4, 128, bias=False),
         )
-        self.act = nn.LeakyReLU(0.05)
-        # self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192)     
-        self.v_proj = nn.Linear(self.state_dim[0], 192)  
-        self.fc = nn.Linear(192, self.output_dim, bias=False)
+        # self.act = nn.LeakyReLU(0.05)
+        # self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192)  
+        self.act = nn.Tanh()   
+        self.v_proj = nn.Linear(self.state_dim[0], 128)  
+        self.fc = nn.Linear(128, self.output_dim, bias=False)
+        for param in self.stem.parameters():
+            param.requires_grad = False
 
     def reset(self, dones=None, hidden_states=None):
         pass

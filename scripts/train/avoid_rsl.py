@@ -51,6 +51,8 @@ def main():
     )
     genesis_env.step()
     runner = OnPolicyRunner(avoid_task, train_config, log_dir, device="cuda:0")
+    avoid_task.networks["actor"] = runner.alg.policy.actor
+    avoid_task.networks["critic"] = runner.alg.policy.critic
     runner.learn(num_learning_iterations=train_config["max_iterations"], init_at_random_ep_len=True)
 
 if __name__ == "__main__" :
