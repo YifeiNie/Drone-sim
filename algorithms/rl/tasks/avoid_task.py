@@ -82,8 +82,6 @@ class Avoid_task(VecEnv):
         self._register_reward_fun()
         self.reward_buffer_for_log = {name: deque(maxlen=100) for name in self.reward_functions.keys()}
 
-        self._resample_commands()
-
     def compute_reward(self):
         for name, reward_func in self.reward_functions.items():
             reward = reward_func() * self.reward_scales[name]
@@ -123,6 +121,12 @@ class Avoid_task(VecEnv):
         altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max) - 0.3
         return -altitude_hold_reward
 
+    def _reward_lazy(self):
+        lazy_reward = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
+        condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
+        lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
+        
+        return lazy_reward
 
     # def _reward_safe(self, danger_threshold=0.5, grid_size=(4, 4), penalty_weight=1.0):
 
@@ -274,7 +278,7 @@ class Avoid_task(VecEnv):
                 param.requires_grad = True
             for param in self.networks["critic"]:
                 param.requires_grad = True
-                
+
         if self.cur_iter > 1000:
             x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
             x = F.max_pool2d(x, 4, 4)
