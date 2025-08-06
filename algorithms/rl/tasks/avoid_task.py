@@ -9,6 +9,8 @@ import types
 from rsl_rl.env.vec_env import VecEnv
 from tensordict import TensorDict
 from torch.nn import functional as F
+import statistics
+from collections import deque
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -77,6 +79,8 @@ class Avoid_task(VecEnv):
         self.extras = dict()  # extra information for logging
 
         self._register_reward_fun()
+        self.reward_buffer_for_log = {name: deque(maxlen=100) for name in self.reward_functions.keys()}
+
         self._resample_commands()
 
     def compute_reward(self):
@@ -287,8 +291,15 @@ class Avoid_task(VecEnv):
         else:
             reset_range = env_idx
         self.extras["episode"] = {}
+
         for key in self.episode_reward_sums.keys():
-            self.extras["episode"]["reward_" + key] = (
-                torch.mean(self.episode_reward_sums[key]).item()
-            )
+            rewards = self.episode_reward_sums[key][reset_range].cpu().numpy().tolist()
+            self.reward_buffer_for_log[key].extend(rewards)
+
+            if len(self.reward_buffer_for_log[key]) > 0:
+                mean_reward = statistics.mean(self.reward_buffer_for_log[key])
+            else:
+                mean_reward = 0.0
+
+            self.extras["episode"]["reward_" + key] = mean_reward
             self.episode_reward_sums[key][reset_range] = 0.0
