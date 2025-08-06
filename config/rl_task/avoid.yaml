@@ -8,7 +8,7 @@ task:
     yaw: 0.001 
     angular: 0.03
     crash: 500 
-    altitude_hold: 15
+    altitude_hold: 1
     # safe: 0.1
 
   termination_if_roll_greater_than: 180   # degree
@@ -64,10 +64,10 @@ train:
     class_name: PPO 
     clip_param: 0.2 
     desired_kl: 0.01 
-    entropy_coef: 0.01 
+    entropy_coef: 0.015 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.0003 
+    learning_rate: 0.0002 
     max_grad_norm: 1.0 
     num_learning_epochs: 5 
     num_mini_batches: 4 
