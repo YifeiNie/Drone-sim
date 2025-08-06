@@ -4,10 +4,10 @@ task:
   reward_scales:
     target: 20.0
     # go_forward: 1.0 
-    stable: 0.1 
+    stable: 0.01 
     yaw: 0.001 
     angular: 0.03
-    crash: 500 
+    crash: 50 
     altitude_hold: 1
     # safe: 0.1
 
@@ -64,7 +64,7 @@ train:
     class_name: PPO 
     clip_param: 0.2 
     desired_kl: 0.01 
-    entropy_coef: 0.015 
+    entropy_coef: 0.004 
     gamma: 0.99 
     lam: 0.95 
     learning_rate: 0.0002 
@@ -82,7 +82,7 @@ train:
     activation: tanh 
     actor_hidden_dims: [128, 128] 
     critic_hidden_dims: [256, 256]
-    init_noise_std: [1, 1, 1, 0.3]
+    init_noise_std: [1, 1, 1, 0.2]
     noise_std_type: "log"
 
   runner_class_name: OnPolicyRunner 

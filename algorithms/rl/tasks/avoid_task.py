@@ -90,9 +90,9 @@ class Avoid_task(VecEnv):
             self.episode_reward_sums[name] += reward
 
     def _reward_target(self):
-        last = torch.square(self.last_pos_error) - torch.square(self.cur_pos_error)
-        target_reward = torch.sum(last*torch.tensor([1, 1, 3], device=self.device), dim=1)
-        target_reward[self._at_target()] += 100
+        target_reward = torch.sum(torch.square(self.last_pos_error) - torch.square(self.cur_pos_error), dim=1)
+        # target_reward = torch.sum(last*torch.tensor([1, 1, 3], device=self.device), dim=1)
+        target_reward[self._at_target()] += 10
         # target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
         return target_reward
 
@@ -118,8 +118,8 @@ class Avoid_task(VecEnv):
 
     def _reward_altitude_hold(self):
         z = self.genesis_env.drone.odom.world_pos[:, 2]
-        z_min, z_max = 0.55, 1.1
-        altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max)
+        z_min, z_max = 0.8, 0.9
+        altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max) - 0.3
         return -altitude_hold_reward
 
 
