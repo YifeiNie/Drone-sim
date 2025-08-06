@@ -52,7 +52,7 @@ pid_exec_freq: 60
 
 # =========== drone_param =============
 # see in assets/drone_urdf/cf2x.urdf
-thrust_compensate: 1.4
+thrust_compensate: 0.7
 weight: 0.5   
 motor_inertia: 2.6e-07
 g: 9.81   

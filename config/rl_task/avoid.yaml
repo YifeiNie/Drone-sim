@@ -3,20 +3,20 @@ task:
   yaw_lambda: -10.0 
   reward_scales:
     target: 20.0
-    go_forward: 1.0 
-    stable: 0.01 
+    # go_forward: 1.0 
+    stable: 0.1 
     yaw: 0.001 
     angular: 0.03
-    crash: 0.5 
-    altitude_hold: 1.2
+    crash: 500 
+    altitude_hold: 15
     # safe: 0.1
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
   termination_if_close_to_ground: 0.2 
-  termination_if_x_greater_than: 12.0 
-  termination_if_y_greater_than: 12.0 
-  termination_if_z_greater_than: 1.0
+  termination_if_x_greater_than: 10.0 
+  termination_if_y_greater_than: 10.0 
+  termination_if_z_greater_than: 1.5
   collision_if_dis_less_than: 0.1
 
   clip_actions: 1.0 
@@ -27,13 +27,13 @@ task:
   num_actions: 4                      # roll, pitch, yaw, thrust
   num_commands: 3                     # 3d position: x, y, z
   command_cfg:
-    pos_x_range: [-1.1, 0.6] 
+    pos_x_range: [-1.81, -0.19] 
     pos_y_range: [-1.2, 1.2] 
     pos_z_range: [0.7, 1.1] 
 
   num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
-  num_obs_img_raw: [1, 24, 32]        # raw is[1, 48, 64], after pooling is [1, 12, 16]
-  num_obs_img_pooling: [1, 24, 32]    # raw is[1, 48, 64], after pooling is [1, 12, 16]
+  num_obs_img_raw: [1, 12, 16]        # raw is[1, 48, 64], after pooling is [1, 12, 16]
+  num_obs_img_pooling: [1, 12, 16]    # raw is[1, 48, 64], after pooling is [1, 12, 16]
   num_obs_privileged: 9               # pos*3, target_pos*3, lin_vel*3
   num_hiden_state: 192
 
@@ -67,7 +67,7 @@ train:
     entropy_coef: 0.01 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.001 
+    learning_rate: 0.0003 
     max_grad_norm: 1.0 
     num_learning_epochs: 5 
     num_mini_batches: 4 

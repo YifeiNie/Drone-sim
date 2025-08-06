@@ -172,7 +172,7 @@ class Genesis_env :
     def set_drone_camera(self):
         if (self.env_config.get("use_FPV_camera", False)):
             cam = self.scene.add_camera(
-                res=(32, 24),
+                res=self.env_config["cam_res"],
                 pos=(-3.5, 0.0, 2.5),
                 lookat=(0, 0, 0.5),
                 fov=58,

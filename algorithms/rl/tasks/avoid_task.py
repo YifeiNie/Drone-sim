@@ -86,7 +86,9 @@ class Avoid_task(VecEnv):
             self.episode_reward_sums[name] += reward
 
     def _reward_target(self):
-        target_reward = torch.sum(torch.square(self.last_pos_error), dim=1) - torch.sum(torch.square(self.cur_pos_error), dim=1)
+        last = torch.square(self.last_pos_error) - torch.square(self.cur_pos_error)
+        target_reward = torch.sum(last*torch.tensor([1, 1, 3], device=self.device), dim=1)
+        target_reward[self._at_target()] += 100
         # target_error_reward = -torch.norm(self.cur_pos_error, dim=1)
         return target_reward
 
@@ -112,7 +114,7 @@ class Avoid_task(VecEnv):
 
     def _reward_altitude_hold(self):
         z = self.genesis_env.drone.odom.world_pos[:, 2]
-        z_min, z_max = 0.6, 1.1
+        z_min, z_max = 0.55, 1.1
         altitude_hold_reward = torch.relu(z_min - z) + torch.relu(z - z_max)
         return -altitude_hold_reward
 
@@ -153,7 +155,7 @@ class Avoid_task(VecEnv):
             reset_range = torch.arange(self.num_envs, device=self.device)
         else:
             reset_range = envs_idx
-        self.command_buf[reset_range, 0] = gs_rand_float(*tuple(v + self.cur_iter/1100 for v in self.command_cfg["pos_x_range"]), (len(reset_range),), self.device)
+        self.command_buf[reset_range, 0] = gs_rand_float(*tuple(v + self.cur_iter/1000 for v in self.command_cfg["pos_x_range"]), (len(reset_range),), self.device)
         # self.command_buf[reset_range, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(reset_range),), self.device)
         self.command_buf[reset_range, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(reset_range),), self.device)
         self.command_buf[reset_range, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(reset_range),), self.device)
@@ -214,9 +216,9 @@ class Avoid_task(VecEnv):
             | self.crash_condition_buf 
             | self.genesis_env.drone.odom.has_none
         )
-        
-        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())    # use list to adapt to get_pos()...  
         self.compute_reward()
+        self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())    # use list to adapt to get_pos()...  
+        
         self.last_actions[:] = self.actions
         self._resample_commands(self._at_target())
         
@@ -262,10 +264,10 @@ class Avoid_task(VecEnv):
         dep = torch.from_numpy(self.genesis_env.drone.cam.depth).to(self.device)
         # dep = torch.abs(dep - 255)
         self.obs_buf["img_raw"] = dep
-
-        x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
-        # x = F.max_pool2d(x[:, None], 4, 4)
-        self.obs_buf["img_pooling"] = x
+        if self.cur_iter > 1000:
+            self.obs_buf["img_pooling"] = x
+            x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
+        # x = F.max_pool2d(x, 4, 4)
 
         self.obs_buf["privileged"] = torch.cat([
                 self.genesis_env.drone.odom.world_pos,
