@@ -116,14 +116,16 @@ class Actor_net(nn.Module):
         )
         self.fc = nn.Linear(192, self.output_dim, bias=False)
         self.act = nn.LeakyReLU(0.05)
-        self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192) 
+        # self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192) 
+        self.v_proj = nn.Linear(self.state_dim[0], 192) 
 
     def reset(self, dones=None, hidden_states=None):
         pass
 
     def forward(self, obs):
         img_feat = self.stem(obs["depth"])
-        x_tem = self.act(img_feat + self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1)))
+        # x_tem = self.act(img_feat + self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1)))
+        x_tem = self.act(img_feat + self.v_proj(obs["state"]))
         self.fc.weight.data.mul_(0.01)
         action = torch.tanh(self.fc(x_tem))
         return action
@@ -153,7 +155,8 @@ class Critic_net(nn.Module):
             nn.Linear(128*2*4, 192, bias=False),
         )
         self.act = nn.LeakyReLU(0.05)
-        self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192)     
+        # self.v_proj = nn.Linear(self.state_dim[0] + self.privileged_obs_dim[0], 192)     
+        self.v_proj = nn.Linear(self.state_dim[0], 192)  
         self.fc = nn.Linear(192, self.output_dim, bias=False)
 
     def reset(self, dones=None, hidden_states=None):
@@ -161,5 +164,6 @@ class Critic_net(nn.Module):
 
     def forward(self, obs):
         img_feat = self.stem(obs["depth"])
-        x_tem = self.act(img_feat + self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1)))
+        # x_tem = self.act(img_feat + self.v_proj(torch.cat([obs["state"], obs["privileged"]], dim=-1)))
+        x_tem = self.act(img_feat + self.v_proj(obs["state"]))
         return self.fc(x_tem)

@@ -95,7 +95,7 @@ class PIDcontroller:
         if action is None:
             throttle = throttle_rc
         else:
-            throttle_action = torch.clamp((action[:, -1]*0.5 + self.thrust_compensate), min=0.1, max=3.0) * self.base_rpm
+            throttle_action = torch.clamp((action[:, -1] + self.thrust_compensate), min=0.1, max=3.0) * self.base_rpm
 
             throttle = throttle_rc + throttle_action
 
