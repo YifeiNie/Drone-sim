@@ -20,28 +20,16 @@ def main():
 
     # logging_level="warning"
     gs.init(logging_level="warning")
-
-
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = os.path.join(current_dir, f"logs/track_task_{timestamp}")
-    if os.path.exists(log_dir):
-        shutil.rmtree(log_dir)
-    os.makedirs(log_dir, exist_ok=True)
-
-
-    with open("config/sim_env/env.yaml", "r") as file:
+    
+    with open("config/demos/rc_FPV_eval/genesis_env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/sim_env/flight.yaml", "r") as file:
+    with open("config/demos/rc_FPV_eval/flight.yaml", "r") as file:
         flight_config = yaml.load(file, Loader=yaml.FullLoader)
 
 
     genesis_env = Genesis_env(
         env_config = env_config, 
         flight_config = flight_config,
-        viewer_follow_drone = True,
-        use_rc = True,
-        load_map = True,
     )
 
     device = "/dev/ttyUSB0"

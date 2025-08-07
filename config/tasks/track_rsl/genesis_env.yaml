@@ -1,0 +1,33 @@
+
+# ========= genesis =========
+num_envs: 8     # num_envs must larger than num_mini_batches (default=4)! or mini_batch = 0!! 
+drone_num: 1
+dt: 0.01
+max_vis_FPS: 30 
+use_FPV_camera: True
+max_dis_num: 5
+cam_quat: [-0.455, -0.542, 0.542, 0.455]  # FPV camera, 70.0 degree, show in https://quaternions.online/
+cam_res: [16, 12]                         # width, height
+drone_init_pos: [-0.6, 0.0, 0.4]          # Initial position of the drone
+vis_waypoints: True 
+
+viewer_follow_drone: False
+load_map: False
+use_rc: False
+show_viewer: True
+render_cam: False
+controller: "angle"
+map: "gates"
+
+# ======== waypoints= =======
+init_x_range: [-1.61, -1.59] 
+init_y_range: [-0.05, 0.05] 
+init_z_range: [0.7, 0.71] 
+target_thr: 0.1 
+
+
+
+
+
+
+

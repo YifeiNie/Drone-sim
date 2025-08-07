@@ -25,25 +25,22 @@ class Genesis_env :
             self, 
             env_config, 
             flight_config,
-            viewer_follow_drone = False,
-            load_map = False, 
-            use_rc = False,
-            show_viewer = True,
-            render_cam = False,):
+        ):
         
-        self.render_cam = render_cam
-        self.use_rc = use_rc
+
         self.env_config = env_config
         self.flight_config = flight_config
-
+        self.controller = env_config["controller"]
+        self.render_cam = self.env_config["render_cam"]
+        self.use_rc = self.env_config["use_rc"]
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_envs = self.env_config.get("num_envs", 1)
         self.dt = self.env_config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         
-        self.rendered_env_num = self.num_envs if self.render_cam else min(100, self.num_envs)
-
+        self.rendered_env_num = self.num_envs if self.render_cam else min(3, self.num_envs)
         # self.rendered_env_num = min(3, self.num_envs)
+        
         # create scene
         self.scene = gs.Scene(
             sim_options = gs.options.SimOptions(dt = self.dt, substeps = 1),
@@ -65,7 +62,7 @@ class Genesis_env :
                 enable_collision = True,
                 enable_joint_limit = True,
             ),
-            show_viewer = show_viewer,
+            show_viewer = self.env_config["show_viewer"],
         )
 
         # creat map
@@ -76,7 +73,7 @@ class Genesis_env :
         )
 
         # add entity in map
-        if load_map is True:
+        if self.env_config["load_map"] is True:
             if self.env_config["map"] == "forest":
                 self.map.add_trees_to_scene(scene = self.scene)
             elif self.env_config["map"] == "gates":
@@ -88,13 +85,13 @@ class Genesis_env :
         # add drone
         drone = gs.morphs.Drone(
             file="assets/drone_urdf/drone.urdf", 
-            pos=(-0.6, 0.0, 0.4), 
+            pos=self.env_config["drone_init_pos"], 
             default_armature=self.flight_config.get("motor_inertia", 2.6e-07)
         )
         self.drone = self.scene.add_entity(drone)
         
         # set viewer
-        if viewer_follow_drone is True:
+        if self.env_config["viewer_follow_drone"] is True:
             self.scene.viewer.follow_entity(self.drone)  # follow drone
         
         # restore distance list with entity
@@ -140,12 +137,12 @@ class Genesis_env :
     def step(self, action=None): 
         self.scene.step()
         self.update_entity_dis_list()
-        # print(torch.tensor(self.drone.entity_dis_list.lists))
-        # self.drone.lidar.step()
         self.drone.cam.set_FPV_cam_pos()
         if self.render_cam:
             self.drone.cam.depth = self.drone.cam.render(rgb=False, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
+        
+        # self.drone.lidar.step()
         # self.get_aabb_list()
         # self.reset()
 
@@ -197,7 +194,8 @@ class Genesis_env :
             odom = self.drone.odom, 
             config = self.flight_config,
             device = torch.device("cuda"),
-            use_rc = self.use_rc
+            use_rc = self.use_rc,
+            controller = self.controller,
         )
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)      
