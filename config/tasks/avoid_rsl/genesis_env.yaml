@@ -15,7 +15,7 @@ viewer_follow_drone: False
 load_map: True
 use_rc: False
 show_viewer: True
-render_cam: False
+render_cam: True
 controller: "angle"
 map: "gates"
 # ======== waypoints= =======
