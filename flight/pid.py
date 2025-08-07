@@ -8,6 +8,7 @@ import time
 import threading
 import numpy as np
 import math
+from genesis.utils.geom import quat_to_R
 
 class PIDcontroller:
     def __init__(
@@ -104,11 +105,11 @@ class PIDcontroller:
 
     def mixer(self, action=None) -> torch.Tensor:
 
-        throttle_rc = torch.clamp(self.rc_command[3] + self.throttle_command * 3, 0, 3) * self.base_rpm
+        throttle_rc = torch.clamp((self.rc_command[3] + self.throttle_command) * 3, 0.1, 3) * self.base_rpm
         if action is None:
             throttle = throttle_rc
         else:
-            throttle_action = torch.clamp((action[:, -1] + self.thrust_compensate), min=0.1, max=3.0) * self.base_rpm
+            throttle_action = torch.clamp((action[:, -1] + self.thrust_compensate) * 3, min=0.1, max=3.0) * self.base_rpm
             throttle = throttle_rc + throttle_action
 
         # self.pid_output[:] = torch.clip(self.pid_output[:], -3.0, 3.0)
@@ -157,13 +158,13 @@ class PIDcontroller:
     def rate_controller(self, action=None): 
         """
         Anglular rate controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
-
-        :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
+        :param: 
+            action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         if action is None:
             self.body_set_point[:] = self.rc_command[:3] * 15   # max 15 rad/s
         else:
-            self.body_set_point[:] = action[:, :3] * 15
+            self.body_set_point[:] = action[:, :3] * 1
 
         self.last_setpoint_error[:] = self.cur_setpoint_error
         self.cur_setpoint_error[:] = self.body_set_point - self.odom.body_ang_vel
@@ -177,8 +178,8 @@ class PIDcontroller:
     def angle_controller(self, action=None):  
         """
         Angle controller, sequence is (roll, pitch, yaw), use previous-D-term PID controller
-
-        :param: action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
+        :param: 
+            action: torch.Size([num_envs, 4]), like [[roll, pitch, yaw, thrust]] if num_envs = 1
         """
         if action is None:
             self.body_set_point[:] = -self.odom.body_euler + self.rc_command[:3]  
@@ -194,26 +195,31 @@ class PIDcontroller:
         self.pid_output[:] = (self.P_term_a + self.I_term_a + self.D_term_a)
         self.last_body_ang_vel[:] = self.odom.body_ang_vel
 
-    def position_controller(self, action):
+    def position_controller(self, action, head_free=False):
         """
         Position controller, sequence is (x, y, z), use previous-D-term PID controller
-        Keep yaw follow the target, namely keep the drone facing the target direction.
-
-        :param: action: torch.Size([num_envs, 3]), like [[x, y, z]] if num_envs = 1
+        Note that the action is in world frame, (x, y, z) -> (pitch, -roll, throttle)
+        :param: 
+            action: torch.Size([num_envs, 4]), like [[x, y, z, 0]] if num_envs = 1, 0 sued to adapt thrust
+            head_free: Keep yaw follow the target, namely keep the drone facing the target direction.
         """
-        action = torch.as_tensor(action, dtype=gs.tc_float)
-        self.body_set_point[:] = action
+        self.body_set_point[:] = action[:, :3]
         cur_pos_error = (self.body_set_point - self.odom.world_pos)
+        cur_pos_error[:, 1] *= -1                       # since roll increase, y decrease
+        cur_pos_error = cur_pos_error[:, [1, 0, 2]]     # change to (roll, pitch, throttle)
+        if head_free:
+            cur_pos_error = ve2vb(cur_pos_error, self.odom.body_euler[:, 2])
 
         self.P_term_p[:] = (cur_pos_error * self.kp_p)
         self.I_term_p[:] = torch.clamp(self.I_term_p + cur_pos_error * self.ki_p, -0.5, 0.5)
-        self.D_term_p[:] = (self.odom.last_world_linear_vel - self.odom.world_linear_vel) * self.kd_p  
+        self.D_term_p[:] = torch.clamp((self.odom.last_world_linear_vel - self.odom.world_linear_vel) * self.kd_p, -0.5, 0.5)  
 
         sum = self.P_term_p + self.I_term_p + self.D_term_p 
-        self.throttle_command = torch.clamp(sum[:,-1], min=0.0, max=3.0)
+        self.throttle_command = torch.clamp(sum[:,-1], min=0.0, max=1.0)
 
-        sum[:,-1] = torch.atan2(action[:, 1], action[:, 0])
-        self.angle_controller(self, torch.clamp(sum, -1, 1))
+        # sum[:,-1] = torch.atan2(action[:, 1], action[:, 0])
+        sum[:, -1] = 0
+        self.angle_controller(torch.clamp(sum, -1, 1))
 
     def reset(self, env_idx=None):
         if env_idx is None:
@@ -277,3 +283,34 @@ def random_quaternion(num_envs=1, device="cuda"):
     quat = torch.cat([w, x, y, z], dim=1)
     quat = quat / quat.norm(dim=1, keepdim=True)
     return quat
+
+import torch
+
+def ve2vb(input_vec: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
+    """
+    将世界坐标向量转换为机体坐标系向量，支持 batch。
+    参数：
+        input_vec: shape (N, 3)，每个样本一个三维向量（世界系）
+        yaw: shape (N,) 或 (N, 1)，每个样本一个 yaw 角（弧度）
+
+    返回：
+        shape (N, 3)，转换后的机体坐标系向量
+    """
+    assert input_vec.ndim == 2 and input_vec.shape[1] == 3, "input_vec must be (N, 3)"
+    assert yaw.ndim == 1 or (yaw.ndim == 2 and yaw.shape[1] == 1), "yaw must be (N,) or (N,1)"
+
+    yaw = -yaw.view(-1)
+    cos_yaw = torch.cos(yaw)
+    sin_yaw = torch.sin(yaw)
+
+    R = torch.zeros((input_vec.shape[0], 3, 3), dtype=input_vec.dtype, device=input_vec.device)
+    R[:, 0, 0] = cos_yaw
+    R[:, 0, 1] = sin_yaw
+    R[:, 1, 0] = -sin_yaw
+    R[:, 1, 1] = cos_yaw
+    R[:, 2, 2] = 1.0
+
+    input_vec = input_vec.unsqueeze(-1)
+    output = torch.bmm(R, input_vec)
+
+    return output.squeeze(-1) 

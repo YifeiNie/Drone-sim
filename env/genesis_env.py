@@ -112,7 +112,7 @@ class Genesis_env :
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
                     file="assets/sphere/sphere.obj",
-                    scale=0.03,
+                    scale=0.02,
                     fixed=False,
                     collision=False,
                 ),
