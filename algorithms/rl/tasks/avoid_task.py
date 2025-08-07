@@ -148,10 +148,17 @@ class Avoid_task(VecEnv):
     def _reward_safe(self):
         distance = self.min_distance_buf
         with torch.no_grad():
-            v_to_pt = (self.min_distance_buf - self.last_min_distance_buf).clamp_min(1)     # (num_envs, max_dis_num) 
-        obj_avoidance_reward = barrier(distance, v_to_pt)
-        collide_reward = F.softplus(distance * (1 - torch.sigmoid((distance - 0.3) * 10)).mul(-1)).mul(v_to_pt)
-        return collide_reward - obj_avoidance_reward
+            delta_d = distance - self.last_min_distance_buf
+            approaching = (-delta_d).clamp(min=0)            
+
+        # reward when distance < 0.5
+        obj_avoidance_reward = (delta_d.clamp(min=0) * (0.5 - distance).relu().pow(2))
+
+        # penalty for close (<0.3) and approaching obstacle 
+        is_too_close = 1 - torch.sigmoid((distance - 0.3) * 10)
+        collide_penalty = F.softplus(-distance * is_too_close) * approaching
+
+        return collide_penalty + obj_avoidance_reward
 
 
     def _reward_go_forward(self):
@@ -206,7 +213,7 @@ class Avoid_task(VecEnv):
         self.cur_pos_error[:] = self.command_buf - self.genesis_env.drone.odom.world_pos
 
         self.last_distance_buf[:] = self.distance_buf
-        self.distance_buf[:] = -torch.tensor(self.genesis_env.drone.entity_dis_list.lists).to(self.device)[:, :, 0]
+        self.distance_buf[:] = -torch.tensor(self.genesis_env.drone.entity_dis_list.lists).to(self.device)[:, :, 0]     # negative since max heap
         
         self.last_min_distance_buf[:] = self.min_distance_buf
         self.min_distance_buf[:] = self.distance_buf.min(dim=1).values
