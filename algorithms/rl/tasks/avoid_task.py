@@ -283,7 +283,7 @@ class Avoid_task(VecEnv):
         if self.cur_iter > 300:
             x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
             x = F.max_pool2d(x, 4, 4)
-            self.obs_buf["img_pooling"] = x * torch.clamp(self.cur_iter * 0.00005, 0.0, 1.0) 
+            self.obs_buf["img_pooling"] = x * np.clip(self.cur_iter * 0.00005, 0.0, 1.0) 
         
         self.obs_buf["privileged"] = torch.cat([
                 self.genesis_env.drone.odom.world_pos,
