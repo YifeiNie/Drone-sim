@@ -12,6 +12,7 @@ from sensors.LidarSensor.lidar_sensor import LidarSensor
 from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 
 from flight.mavlink_sim import rc_command
+from flight.ros_interface import Publisher
 from utils.heapq_ import MultiEntityList
 from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
@@ -27,19 +28,23 @@ class Genesis_env :
             flight_config,
         ):
         
-
+        # configs
         self.env_config = env_config
         self.flight_config = flight_config
-        self.controller = env_config["controller"]
+
+        # bool switches
         self.render_cam = self.env_config["render_cam"]
         self.use_rc = self.env_config["use_rc"]
+        self.use_ros = self.env_config.get("use_ros", False)
+
+        # flight
+        self.controller = env_config["controller"]
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_envs = self.env_config.get("num_envs", 1)
         self.dt = self.env_config.get("dt", 0.01)           # default sim env update in 100hz
         self.cam_quat = torch.tensor(self.env_config.get("cam_quat", [0.5, 0.5, -0.5, -0.5]), device=self.device, dtype=gs.tc_float).expand(self.num_envs, -1)
         
         self.rendered_env_num = self.num_envs if self.render_cam else min(3, self.num_envs)
-        # self.rendered_env_num = min(3, self.num_envs)
         
         # create scene
         self.scene = gs.Scene(
@@ -108,25 +113,12 @@ class Genesis_env :
         self.set_drone_camera()
 
         # add target
-        if self.env_config["vis_waypoints"]:
-            self.target = self.scene.add_entity(
-                morph=gs.morphs.Mesh(
-                    file="assets/sphere/sphere.obj",
-                    scale=0.02,
-                    fixed=False,
-                    collision=False,
-                ),
-                surface=gs.surfaces.Rough(
-                    diffuse_texture=gs.textures.ColorTexture(
-                        color=(1.0, 0.5, 0.5),
-                    ),
-                ),
-            )
-        else:
-            self.target = None
+        self.set_target_phere_for_vis()
 
         # build world
         self.scene.build(n_envs = self.num_envs)
+
+        # init
         self.drone_init_pos = self.drone.get_pos()
         self.drone_init_quat = self.drone.get_quat()
         self.drone.set_dofs_damping(torch.tensor([0.0, 0.0, 0.0, 1e-4, 1e-4, 1e-4]))  # Set damping to a small value to avoid numerical instability
@@ -141,6 +133,9 @@ class Genesis_env :
         if self.render_cam:
             self.drone.cam.depth = self.drone.cam.render(rgb=False, depth=True)[1]   # [1] is idx of depth img
         self.drone.controller.step(action)
+        if self.use_ros:
+            pass
+
         
         # self.drone.lidar.step()
         # self.get_aabb_list()
@@ -186,6 +181,27 @@ class Genesis_env :
         setattr(cam ,'depth', depth)
         setattr(self.drone, 'cam', cam)
 
+    def set_target_phere_for_vis(self):
+        if self.env_config["vis_waypoints"]:
+            self.target = self.scene.add_entity(
+                morph=gs.morphs.Mesh(
+                    file="assets/sphere/sphere.obj",
+                    scale=0.02,
+                    fixed=False,
+                    collision=False,
+                ),
+                surface=gs.surfaces.Rough(
+                    diffuse_texture=gs.textures.ColorTexture(
+                        color=(1.0, 0.5, 0.5),
+                    ),
+                ),
+            )
+        else:
+            self.target = None
+
+    def set_ros(self):
+        if self.use_ros is True:
+            pass
 
     def set_drone_controller(self):
         pid = PIDcontroller(

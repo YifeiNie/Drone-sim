@@ -16,7 +16,12 @@
     ```
     python scripts/eval/back2nt_eval.py
     ```
-
+    
+#### Position controller test
+- Try to get the target with no planning
+    ```
+    python scripts/eval/pos_ctrl_eval.py
+    ```
 #### An tracking task
 - Train the model
     ```
@@ -29,8 +34,9 @@
     ``` 
 
 ### Reference
-- [gazebo-vegetation](https://github.com/kubja/gazebo-vegetation)
-- [OmniPerception](https://github.com/aCodeDog/OmniPerception)
+- [SensorSimulator](https://github.com/TJU-Aerial-Robotics/SensorSimulator.git)
 - [rsl-rl](https://github.com/leggedrobotics/rsl_rl.git)
-- [stable-baselines3](https://github.com/DLR-RM/stable-baselines3.git)
 - [Back to Newton](https://github.com/HenryHuYu/DiffPhysDrone)
+- [stable-baselines3](https://github.com/DLR-RM/stable-baselines3.git)
+- [OmniPerception](https://github.com/aCodeDog/OmniPerception)
+- [gazebo-vegetation](https://github.com/kubja/gazebo-vegetation)

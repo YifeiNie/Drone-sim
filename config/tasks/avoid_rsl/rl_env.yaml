@@ -10,7 +10,7 @@ task:
     crash: 10 
     # altitude_hold: 1
     lazy: 1
-    # safe: 0.1
+    safe: 0.0
 
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 

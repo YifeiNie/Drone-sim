@@ -41,14 +41,6 @@ def main():
         at_target = ((torch.norm(cur_pos_error, dim=1) < 0.2).nonzero(as_tuple=False).flatten())
         return at_target
 
-    current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = os.path.join(current_dir, f"logs/track_task_{timestamp}")
-    if os.path.exists(log_dir):
-        shutil.rmtree(log_dir)
-    os.makedirs(log_dir, exist_ok=True)
-
-
     with open("config/demos/pos_ctrl_eval/genesis_env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
     with open("config/demos/pos_ctrl_eval/flight.yaml", "r") as file:
