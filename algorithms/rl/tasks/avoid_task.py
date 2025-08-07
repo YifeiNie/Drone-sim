@@ -273,25 +273,24 @@ class Avoid_task(VecEnv):
         dep = torch.from_numpy(self.genesis_env.drone.cam.depth).to(self.device)
         # dep = torch.abs(dep - 255)
         self.obs_buf["img_raw"] = dep   # 1*64*48
-        if self.cur_iter == 1000:
-            for param in self.networks["actor"]:
+        if self.cur_iter == 300:
+            for param in self.networks["actor"].parameters():
                 param.requires_grad = True
-            for param in self.networks["critic"]:
+            for param in self.networks["critic"].parameters():
                 param.requires_grad = True
+            self.reward_scales["safe"] = 0.5
 
-        if self.cur_iter > 1000:
+        if self.cur_iter > 300:
             x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
             x = F.max_pool2d(x, 4, 4)
-            self.obs_buf["img_pooling"] = x
+            self.obs_buf["img_pooling"] = x * torch.clamp(self.cur_iter * 0.00005, 0.0, 1.0) 
         
-
         self.obs_buf["privileged"] = torch.cat([
                 self.genesis_env.drone.odom.world_pos,
                 self.genesis_env.drone.odom.world_linear_vel,
                 self.command_buf,
             ],axis=-1,
         )
-
 
 
     def get_privileged_observations(self):

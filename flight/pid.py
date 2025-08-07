@@ -288,13 +288,12 @@ import torch
 
 def ve2vb(input_vec: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     """
-    将世界坐标向量转换为机体坐标系向量，支持 batch。
-    参数：
-        input_vec: shape (N, 3)，每个样本一个三维向量（世界系）
-        yaw: shape (N,) 或 (N, 1)，每个样本一个 yaw 角（弧度）
-
-    返回：
-        shape (N, 3)，转换后的机体坐标系向量
+    Get body frame vector from world frame vector only using yaw angle.
+    :params: 
+        input_vec: shape (N, 3), 3d vector in world frame
+        yaw: shape (N,) or (N, 1) in rad
+    :returns:
+        shape (N, 3), 3d vector in body frame
     """
     assert input_vec.ndim == 2 and input_vec.shape[1] == 3, "input_vec must be (N, 3)"
     assert yaw.ndim == 1 or (yaw.ndim == 2 and yaw.shape[1] == 1), "yaw must be (N,) or (N,1)"
