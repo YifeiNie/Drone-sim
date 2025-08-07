@@ -7,7 +7,7 @@ max_vis_FPS: 30
 use_FPV_camera: True
 max_dis_num: 5
 cam_quat: [-0.455, -0.542, 0.542, 0.455]  # FPV camera, 70.0 degree, show in https://quaternions.online/
-cam_res: [16, 12]                         # width, height
+cam_res: [64, 48]                         # width, height
 drone_init_pos: [-0.6, 0.0, 0.4]          # Initial position of the drone
 vis_waypoints: True 
 
