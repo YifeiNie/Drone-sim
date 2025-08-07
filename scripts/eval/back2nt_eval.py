@@ -180,7 +180,8 @@ class Genesis_env :
             num_envs = self.config.get("num_envs", 1), 
             rc_command = rc_command,
             odom = self.drone.odom, 
-            device = torch.device("cuda")
+            device = torch.device("cuda"),
+            controller = self.controller,
         )
         pid.set_drone(self.drone)
         setattr(self.drone, 'controller', pid)      
@@ -247,9 +248,9 @@ if __name__ == "__main__" :
     print("loading...")
     # logging_level="warning"
     gs.init(logging_level="warning")
-    with open("config/sim_env/env.yaml", "r") as file:
+    with open("config/demos/back2nt_eval/genesis_env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
-    with open("config/sim_env/flight.yaml", "r") as file:
+    with open("config/demos/back2nt_eval/flight.yaml", "r") as file:
         flight_config = yaml.load(file, Loader=yaml.FullLoader)
     model = Model()
     model.to("cuda")

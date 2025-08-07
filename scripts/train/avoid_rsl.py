@@ -15,19 +15,19 @@ def main():
     gs.init(logging_level="warning")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_dir = f"logs/rsl_avoid/rsl_avoid_{timestamp}"
+    log_dir = f"logs/avoid_rsl/avoid_{timestamp}"
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
     os.makedirs(log_dir, exist_ok=True)
 
 
-    with open("config/sim_env/env.yaml", "r") as file:
+    with open("config/tasks/avoid_rsl/genesis_env.yaml", "r") as file:
         env_config = yaml.load(file, Loader=yaml.FullLoader)
 
-    with open("config/rl_task/avoid.yaml", "r") as file:
+    with open("config/tasks/avoid_rsl/rl_env.yaml", "r") as file:
         rl_config = yaml.load(file, Loader=yaml.FullLoader)
 
-    with open("config/sim_env/flight.yaml", "r") as file:
+    with open("config/tasks/avoid_rsl/flight.yaml", "r") as file:
         flight_config = yaml.load(file, Loader=yaml.FullLoader)
 
     task_config = rl_config["task"]
@@ -37,10 +37,6 @@ def main():
     genesis_env = Genesis_env(
         env_config = env_config, 
         flight_config = flight_config,
-        load_map = True, 
-        use_rc = False,
-        render_cam = True,
-        show_viewer = True, 
     )
 
     avoid_task = Avoid_task(

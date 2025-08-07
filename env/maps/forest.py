@@ -116,7 +116,7 @@ class ForestEnv:
             yaw = math.radians(random.uniform(0, 5))
             morph=morphs.Mesh(
                 file="assets//gate/gate_circle.obj",
-                pos=(x+0.2, y-1.5, random.uniform(0.5, 1.0)),
+                pos=(x+0.2, y-1.5, random.uniform(0.7, 1.1)),
                 euler=(
                     90 + math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  

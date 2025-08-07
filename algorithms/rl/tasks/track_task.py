@@ -8,6 +8,8 @@ from typing import Any
 import types
 from rsl_rl.env.vec_env import VecEnv
 from tensordict import TensorDict
+import statistics
+from collections import deque
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -49,9 +51,10 @@ class Track_task(VecEnv):
         self.reward_functions = dict()
         self.episode_reward_sums = dict()
         self.extras = dict()  # extra information for logging
-
+        
         self._register_reward_fun()
-
+        self.reward_buffer_for_log = {name: deque(maxlen=100) for name in self.reward_functions.keys()}
+        
     def compute_reward(self):
         self.reward_buf[:] = 0.0
         for name, reward_func in self.reward_functions.items():
@@ -88,7 +91,7 @@ class Track_task(VecEnv):
         condition = self.genesis_env.drone.odom.world_pos[:, 2] < 0.1
         lazy_reward[condition] = self.episode_length_buf[condition] / self.max_episode_length
         
-        return lazy_reward
+        return -lazy_reward
         
     def _resample_commands(self, envs_idx):
         self.command_buf[envs_idx, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(envs_idx),), self.device)
@@ -191,9 +194,16 @@ class Track_task(VecEnv):
         else:
             reset_range = env_idx
         self.extras["episode"] = {}
+
         for key in self.episode_reward_sums.keys():
-            self.extras["episode"]["reward_" + key] = (
-                torch.mean(self.episode_reward_sums[key]).item() / self.max_episode_length
-            )
+            rewards = self.episode_reward_sums[key][reset_range].cpu().numpy().tolist()
+            self.reward_buffer_for_log[key].extend(rewards)
+
+            if len(self.reward_buffer_for_log[key]) > 0:
+                mean_reward = statistics.mean(self.reward_buffer_for_log[key])
+            else:
+                mean_reward = 0.0
+
+            self.extras["episode"]["reward_" + key] = mean_reward
             self.episode_reward_sums[key][reset_range] = 0.0
 
