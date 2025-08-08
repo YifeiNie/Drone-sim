@@ -68,7 +68,7 @@ train:
     entropy_coef: 0.004 
     gamma: 0.99 
     lam: 0.95 
-    learning_rate: 0.0002 
+    learning_rate: 0.0003 
     max_grad_norm: 1.0 
     num_learning_epochs: 5 
     num_mini_batches: 4 
