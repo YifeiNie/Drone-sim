@@ -148,17 +148,17 @@ class Avoid_task(VecEnv):
     def _reward_safe(self):
         distance = self.min_distance_buf
         with torch.no_grad():
-            delta_d = distance - self.last_min_distance_buf
-            approaching = (-delta_d).clamp(min=0)            
+            delta_d = distance - self.last_min_distance_buf     # delta_d < 0 means getting closer to the obstacle
+            approaching = (-delta_d).clamp(min=0)               # approaching velocity only getting closer to the obstacle or 0
 
         # reward when distance < 0.5
         obj_avoidance_reward = (delta_d.clamp(min=0) * (0.5 - distance).relu().pow(2))
 
-        # penalty for close (<0.3) and approaching obstacle 
-        is_too_close = 1 - torch.sigmoid((distance - 0.3) * 10)
-        collide_penalty = F.softplus(-distance * is_too_close) * approaching
+        # penalty for close (<0.2) and approaching obstacle 
+        is_too_close = 1 - torch.sigmoid((distance - 0.2) * 10)
+        collide_penalty = F.softplus(1 / distance * is_too_close) * approaching
 
-        return collide_penalty + obj_avoidance_reward
+        return -collide_penalty + obj_avoidance_reward
 
 
     def _reward_go_forward(self):
@@ -290,7 +290,7 @@ class Avoid_task(VecEnv):
         if self.cur_iter > 300:
             x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
             x = F.max_pool2d(x, 4, 4)
-            self.obs_buf["img_pooling"] = x * np.clip(self.cur_iter * 0.00005, 0.0, 1.0) 
+            self.obs_buf["img_pooling"] = x * np.clip(self.cur_iter * 0.0001, 0.0, 1.0) 
         
         self.obs_buf["privileged"] = torch.cat([
                 self.genesis_env.drone.odom.world_pos,
