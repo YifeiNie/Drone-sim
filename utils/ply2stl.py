@@ -3,9 +3,9 @@ import numpy as np
 from stl import mesh as stl_mesh
 
 # PLY点云路径
-ply_path = '/home/nyf/Genesis-Drones/scene/entity_src/pointcloud/tree.ply'
+ply_path = '/home/nyf/test/pt.ply'
 # STL输出路径
-stl_path = '/home/nyf/Genesis-Drones/scene/entity_src/3d_model/tree.stl'
+stl_path = '/home/nyf/test/test.stl'
 
 # 1. 读取PLY点云
 pcd = o3d.io.read_point_cloud(ply_path)

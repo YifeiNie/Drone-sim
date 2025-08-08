@@ -18,7 +18,7 @@ task:
   termination_if_x_greater_than: 10.0 
   termination_if_y_greater_than: 10.0 
   termination_if_z_greater_than: 1.5
-  collision_if_dis_less_than: 0.1
+  collision_if_dis_less_than: 0.05
 
   clip_actions: 1.0 
   target_thr: 0.1

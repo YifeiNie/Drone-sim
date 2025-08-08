@@ -269,35 +269,37 @@ class Avoid_task(VecEnv):
     
     def _update_obs(self):
         self.obs_buf["state"] = torch.cat([
-                torch.clip(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
-                self.genesis_env.drone.odom.body_quat,
-                torch.clip(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
-                torch.clip(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
-                self.last_actions,
-            ],axis=-1,
-        )
+            torch.clamp(self.cur_pos_error * self.obs_scales["cur_pos_error"], -1, 1),
+            self.genesis_env.drone.odom.body_quat,
+            torch.clamp(self.genesis_env.drone.odom.world_linear_vel * self.obs_scales["lin_vel"], -1, 1),
+            torch.clamp(self.genesis_env.drone.odom.body_ang_vel * self.obs_scales["ang_vel"], -1, 1),
+            self.last_actions,
+        ], dim=-1)
 
         dep = torch.from_numpy(self.genesis_env.drone.cam.depth).to(self.device)
-        # dep = torch.abs(dep - 255)
-        self.obs_buf["img_raw"] = dep   # 1*64*48
-        if self.cur_iter == 300:
+        self.obs_buf["img_raw"] = dep
+
+        if self.cur_iter == 320 and not self._grad_enabled:
             for param in self.networks["actor"].parameters():
                 param.requires_grad = True
             for param in self.networks["critic"].parameters():
                 param.requires_grad = True
             self.reward_scales["safe"] = 0.5
+            self._grad_enabled = True
 
-        if self.cur_iter > 300:
-            x = (1 / dep.clamp_(0.3, 24) + torch.randn_like(dep) * 0.01)[:, None] 
+        if self.cur_iter > 320:
+            dep_clamped = dep.clamp(0.3, 24)
+            x = (1 / dep_clamped + torch.randn_like(dep_clamped) * 0.01)[:, None]
             x = F.max_pool2d(x, 4, 4)
-            self.obs_buf["img_pooling"] = x * np.clip(self.cur_iter * 0.00005, 0.0, 1.0) 
-        
+            weight = torch.clamp(torch.tensor(self.cur_iter * 0.00008, device=self.device), 0.0, 1.0)
+            self.obs_buf["img_pooling"] = x * weight
+
         self.obs_buf["privileged"] = torch.cat([
-                self.genesis_env.drone.odom.world_pos,
-                self.genesis_env.drone.odom.world_linear_vel,
-                self.command_buf,
-            ],axis=-1,
-        )
+            self.genesis_env.drone.odom.world_pos,
+            self.genesis_env.drone.odom.world_linear_vel,
+            self.command_buf,
+        ], dim=-1)
+
 
 
     def get_privileged_observations(self):
