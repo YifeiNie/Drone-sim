@@ -15,15 +15,15 @@ task:
   termination_if_roll_greater_than: 180   # degree
   termination_if_pitch_greater_than: 180 
   termination_if_close_to_ground: 0.2 
-  termination_if_x_greater_than: 10.0 
-  termination_if_y_greater_than: 10.0 
-  termination_if_z_greater_than: 1.5
-  collision_if_dis_less_than: 0.05
+  termination_if_x_greater_than: 3.0 
+  termination_if_y_greater_than: 3.0 
+  termination_if_z_greater_than: 1.0
+  collision_if_dis_less_than: 0.1
 
   clip_actions: 1.0 
   target_thr: 0.1
   episode_length_s: 15.0 
-  max_episode_length: 1500
+  max_episode_length: 1000
 
   num_actions: 4                      # roll, pitch, yaw, thrust
   num_commands: 3                     # 3d position: x, y, z
