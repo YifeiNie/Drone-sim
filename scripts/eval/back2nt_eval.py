@@ -1,5 +1,4 @@
 import torch
-import math
 import time
 import types
 import genesis as gs

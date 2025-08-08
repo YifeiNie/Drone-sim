@@ -1,11 +1,9 @@
 import torch
-import math
-import time
 import types
 import genesis as gs
+import numpy as np
 from flight.pid import PIDcontroller
 from flight.odom import Odom
-
 
 from sensors.genesis_lidar import GenesisLidar
 from sensors.LidarSensor.lidar_sensor import LidarSensor
@@ -16,7 +14,6 @@ from flight.ros_interface import Publisher
 from utils.heapq_ import MultiEntityList
 from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
-import numpy as np
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
