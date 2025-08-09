@@ -141,26 +141,19 @@ class ForestEnv:
         positions = self.generate_poisson_points()
         for x, y in positions:
             scale = random.uniform(0.8, 1.2)
-            roll = math.radians(random.uniform(0, 5))
-            pitch = math.radians(random.uniform(0, 5))
-            yaw = math.radians(random.uniform(0, 5))
-            morph=morphs.Mesh(
-                file="assets/simple/cube.obj",
-                pos=(x+0.2, y-1.5, random.uniform(0.7, 1.1)),
+            roll = math.radians(random.uniform(0, 2))
+            pitch = math.radians(random.uniform(0, 2))
+            yaw = math.radians(random.uniform(0, 2))
+            morph=morphs.Box(
+                pos=(x+0.2, y-1.5, 0),
                 euler=(
-                    90 + math.degrees(roll),  # roll
+                    math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.3, scale*0.3, scale*1.2),
+                size=(scale*0.2, scale*0.2, scale*2.2),
                 collision=True,
-                convexify=False,
-                decimate=False,
-                requires_jac_and_IK=False,
                 fixed=True,
-                parse_glb_with_trimesh=True,
-                merge_submeshes_for_collision=False,
-                group_by_material=False,
                 visualization=True,
             )        
             entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=30))
