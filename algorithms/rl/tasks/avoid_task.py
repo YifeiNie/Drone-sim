@@ -173,8 +173,7 @@ class Avoid_task(VecEnv):
         self.gs_rand_float(
             reset_idx = reset,
             bound = self.command_cfg, 
-            offset=torch.tensor([0.0, 0.0, np.clip(self.cur_iter*0.0001, 
-                                                   max=self.task_config["termination_if_x_greater_than"])], 
+            offset=torch.tensor([np.clip(self.cur_iter*0.0001, max=self.task_config["termination_if_x_greater_than"]), 0.0, 0.0], 
                                                    dtype=gs.tc_float, device=self.device), 
             forbidden=self.genesis_env.get_aabb_list()
         )
@@ -186,7 +185,7 @@ class Avoid_task(VecEnv):
             self.episode_reward_sums[name] = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
 
     def _at_target(self):
-        at_target = ((torch.norm(self.cur_pos_error, dim=1) < self.task_config["target_thr"]).nonzero(as_tuple=False).flatten())
+        at_target = torch.norm(self.cur_pos_error, dim=1) < self.task_config["target_thr"]
         return at_target
 
     def step(self, action):
@@ -234,12 +233,14 @@ class Avoid_task(VecEnv):
             (self.episode_length_buf > self.max_episode_length) 
             | self.crash_condition_buf 
             | self.genesis_env.drone.odom.has_none
+            | self._at_target()
         )
+
         self.compute_reward()
         self.reset(self.reset_buf.nonzero(as_tuple=False).flatten())    # use list to adapt to get_pos()...  
         
         self.last_actions[:] = self.actions
-        self._resample_commands(self._at_target())
+        # self._resample_commands(self._at_target())
         
         self._update_obs()
 
