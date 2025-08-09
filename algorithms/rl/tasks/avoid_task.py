@@ -173,7 +173,7 @@ class Avoid_task(VecEnv):
         self.gs_rand_float(
             reset_idx = reset,
             bound = self.command_cfg, 
-            offset=torch.tensor([0.0, 0.0, 0.3], device=self.device), 
+            offset=torch.tensor([0.0, 0.0, np.clip(self.cur_iter*0.0001, max=self.task_config["termination_if_x_greater_than"])], device=self.device), 
             forbidden=self.genesis_env.get_aabb_list()
         )
 
