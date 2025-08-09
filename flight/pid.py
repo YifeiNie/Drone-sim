@@ -284,7 +284,7 @@ import torch
 
 def ve2vb(input_vec: torch.Tensor, yaw: torch.Tensor) -> torch.Tensor:
     """
-    Get body frame vector from world frame vector only using yaw angle.
+    Get body frame vector from world frame vector only using **yaw angle**
     :params: 
         input_vec: shape (N, 3), 3d vector in world frame
         yaw: shape (N,) or (N, 1) in rad

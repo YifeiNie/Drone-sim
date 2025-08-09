@@ -10,7 +10,7 @@ from sensors.LidarSensor.lidar_sensor import LidarSensor
 from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 
 from flight.mavlink_sim import rc_command
-from flight.ros_interface import Publisher
+from flight.ros_interface import publish
 from utils.heapq_ import MultiEntityList
 from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
@@ -69,9 +69,9 @@ class Genesis_env :
 
         # creat map
         self.map = ForestEnv(
-            min_tree_dis = 0.7, 
-            width = 3, 
-            length = 3
+            min_tree_dis = self.env_config["min_dis"], 
+            width = self.env_config["map_width"], 
+            length = self.env_config["map_length"],
         )
 
         # add entity in map
@@ -80,6 +80,8 @@ class Genesis_env :
                 self.map.add_trees_to_scene(scene = self.scene)
             elif self.env_config["map"] == "gates":
                 self.map.add_gates_to_scene(scene = self.scene)
+            elif self.env_config["map"] == "cube":
+                self.map.add_cube_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
@@ -182,7 +184,7 @@ class Genesis_env :
         if self.env_config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="assets/sphere/sphere.obj",
+                    file="assets/simple/sphere.obj",
                     scale=0.02,
                     fixed=False,
                     collision=False,

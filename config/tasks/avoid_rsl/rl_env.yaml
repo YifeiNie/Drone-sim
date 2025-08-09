@@ -51,7 +51,7 @@ train:
   load_run: -1 
   log_interval: 1 
   num_steps_per_env: 80
-  max_iterations: 5000
+  max_iterations: 2
   record_interval: -1 
   resume: False 
   resume_path: null

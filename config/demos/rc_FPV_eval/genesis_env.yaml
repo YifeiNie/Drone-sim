@@ -17,7 +17,9 @@ show_viewer: True
 render_cam: False
 controller: "angle"
 map: "forest"
-
+min_dis: 0.7
+map_width: 3
+map_length: 3
 
 
 

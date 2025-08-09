@@ -116,7 +116,7 @@ class Genesis_env :
         if self.config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="assets/sphere/sphere.obj",
+                    file="assets/simple/sphere.obj",
                     scale=0.03,
                     fixed=False,
                     collision=False,

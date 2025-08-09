@@ -18,6 +18,9 @@ show_viewer: True
 render_cam: False
 controller: "angle"
 map: "gates"
+min_dis: 0.7
+map_width: 3
+map_length: 3
 
 # ======== waypoints= =======
 init_x_range: [-1.61, -1.59] 
