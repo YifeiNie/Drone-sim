@@ -1,5 +1,3 @@
-import threading
-import yaml
 import time
 import torch
 import genesis as gs
@@ -50,13 +48,13 @@ class Odom:
 
     def gyro_update(self):  
         self.body_ang_vel[:] = self.drone.get_ang()     # (roll, pitch, yaw)
-        self.world_ang_vel[:] = transform_by_quat(self.body_ang_vel, self.body_quat_inv)
+        self.world_ang_vel[:] = self.body_to_world(self.body_ang_vel)
 
     def vel_update(self):
         self.last_world_linear_vel[:] = self.world_linear_vel
         self.last_body_linear_vel[:] = self.body_linear_vel
         self.world_linear_vel[:] = self.drone.get_vel()
-        self.body_linear_vel[:] = transform_by_quat(self.world_linear_vel, self.body_quat_inv)
+        self.body_linear_vel[:] = self.world_to_body(self.world_linear_vel)
 
     def acc_update(self, dT):
         self.body_linear_acc[:] = (self.body_linear_vel - self.last_body_linear_vel) / dT
@@ -113,3 +111,32 @@ class Odom:
         self.last_world_linear_vel[reset_range] = self.world_linear_vel[reset_range]
         self.last_body_linear_vel[reset_range] = self.body_linear_vel[reset_range]
 
+
+    # utils
+    def body_to_world(self, input_tensor):
+        """
+        Convert body frame tensor to world frame tensor.
+        :param:
+            input_tensor: pos, vel, acc ...(N, 3) or quat(N, 3), where N is the number of environments.
+        """
+        if input_tensor.shape[-1] == 3:
+            return transform_by_quat(input_tensor, self.body_quat_inv)
+        elif input_tensor.shape[-1] == 4:
+            return transform_quat_by_quat(input_tensor, self.body_quat_inv)
+        else:
+            raise ValueError("Input tensor must have shape (N, 3) or (N, 4).")
+        
+    def world_to_body(self, input_tensor):
+        """
+        Convert world frame tensor to body frame tensor.
+        :param:
+            input_tensor: pos, vel, acc ...(N, 3) or quat(N, 3), where N is the number of environments.
+        """
+        if input_tensor.shape[-1] == 3:
+            return transform_by_quat(input_tensor, self.body_quat)
+        elif input_tensor.shape[-1] == 4:
+            return transform_quat_by_quat(input_tensor, self.body_quat)
+        else:
+            raise ValueError("Input tensor must have shape (N, 3) or (N, 4).")
+        
+    

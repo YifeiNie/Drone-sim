@@ -10,8 +10,7 @@ cam_quat: [-0.455, -0.542, 0.542, 0.455]  # FPV camera, 70.0 degree, show in htt
 cam_res: [64, 48]                         # width, height
 drone_init_pos: [-0.6, 0.0, 0.2]          # Initial position of the drone
 use_FPV_camera: True
-use_waypoints: True
-vis_waypoints: True 
+vis_waypoints: True
 viewer_follow_drone: False
 load_map: False
 use_rc: False
@@ -19,7 +18,9 @@ show_viewer: True
 render_cam: False
 controller: "angle"
 map: "gates"
-
+min_dis: 0.7
+map_width: 3
+map_length: 3
 
 
 

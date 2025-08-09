@@ -12,7 +12,7 @@ import warp as wp
 
 def main():
     # logging_level="warning"
-    gs.init(logging_level="warning")
+    gs.init()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     log_dir = f"logs/avoid_rsl/avoid_{timestamp}"

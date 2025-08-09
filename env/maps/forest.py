@@ -115,7 +115,7 @@ class ForestEnv:
             pitch = math.radians(random.uniform(0, 5))
             yaw = math.radians(random.uniform(0, 5))
             morph=morphs.Mesh(
-                file="assets//gate/gate_circle.obj",
+                file="assets/gate/gate_circle.obj",
                 pos=(x+0.2, y-1.5, random.uniform(0.7, 1.1)),
                 euler=(
                     90 + math.degrees(roll),  # roll
@@ -131,6 +131,29 @@ class ForestEnv:
                 parse_glb_with_trimesh=True,
                 merge_submeshes_for_collision=False,
                 group_by_material=False,
+                visualization=True,
+            )        
+            entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=30))
+            self.entity_list[entity.idx] = entity
+
+    def add_cube_to_scene(self, scene):
+        random.random()
+        positions = self.generate_poisson_points()
+        for x, y in positions:
+            scale = random.uniform(0.8, 1.2)
+            roll = math.radians(random.uniform(0, 0.2))
+            pitch = math.radians(random.uniform(0, 0.2))
+            yaw = math.radians(random.uniform(0, 90))
+            morph=morphs.Box(
+                pos=(x+0.2, y-1.5, 1.4),
+                euler=(
+                    math.degrees(roll),  # roll
+                    math.degrees(pitch),      # pitch  
+                    math.degrees(yaw)         # yaw
+                ),
+                size=(scale*0.15, scale*0.16, scale*1.8),
+                collision=True,
+                fixed=True,
                 visualization=True,
             )        
             entity = scene.add_entity(morph, material=gs.materials.Rigid(sdf_min_res=20, sdf_max_res=30))

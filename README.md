@@ -4,7 +4,7 @@
 - Install dependencies by: `pip install -e`
 
 #### Use RC control FPV in Genesis
-- Flash HEX file in `./modified_BF_firmware/betaflight_4.4.0_STM32H743_forRC.hex` to your FCU (for STM32H743)
+- Flash HEX file in `./utils/modified_BF_firmware/betaflight_4.4.0_STM32H743_forRC.hex` to your FCU (for STM32H743)
 - Use Type-c to power the FCU, and connect UART port (on FCU) and USB port (on PC) through USB2TTL module, like:
 - <img src="./docs/1.png"  width="300" /> <br>
 - Connect the FC and use mavlink to send FC_data from FCU to PC
@@ -12,13 +12,12 @@
 - Do this since the default mavlink frequence for rc_channle is too low
 - Connect the FC and use mavlink to send FC_data from FCU to PC
 - Run demo by `python main.py`
-- Use FC to control the sim drone by :
+- Use FC to control the sim drone by:
     ```
     python scripts/eval/back2nt_eval.py
     ```
-    
 #### Position controller test
-- Try to get the target with no planning
+- Try to get the target with no planning, thus **has poor performance**
     ```
     python scripts/eval/pos_ctrl_eval.py
     ```

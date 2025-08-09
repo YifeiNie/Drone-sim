@@ -4,7 +4,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point, Quaternion
 import tf
 
-def Publisher():
+def publish():
     rospy.init_node('odom_publisher', anonymous=True)
     odom_pub = rospy.Publisher('/sim/odom', Odometry, queue_size=10)
     rate = rospy.Rate(30)  # 30 Hz

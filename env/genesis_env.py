@@ -1,22 +1,19 @@
 import torch
-import math
-import time
 import types
 import genesis as gs
+import numpy as np
 from flight.pid import PIDcontroller
 from flight.odom import Odom
-
 
 from sensors.genesis_lidar import GenesisLidar
 from sensors.LidarSensor.lidar_sensor import LidarSensor
 from sensors.LidarSensor.sensor_config.lidar_sensor_config import LidarType
 
 from flight.mavlink_sim import rc_command
-from flight.ros_interface import Publisher
+from flight.ros_interface import publish
 from utils.heapq_ import MultiEntityList
 from env.maps.forest import ForestEnv
 from genesis.utils.geom import trans_quat_to_T, transform_quat_by_quat, transform_by_trans_quat
-import numpy as np
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -72,9 +69,9 @@ class Genesis_env :
 
         # creat map
         self.map = ForestEnv(
-            min_tree_dis = 0.7, 
-            width = 3, 
-            length = 2
+            min_tree_dis = self.env_config["min_dis"], 
+            width = self.env_config["map_width"], 
+            length = self.env_config["map_length"],
         )
 
         # add entity in map
@@ -83,6 +80,8 @@ class Genesis_env :
                 self.map.add_trees_to_scene(scene = self.scene)
             elif self.env_config["map"] == "gates":
                 self.map.add_gates_to_scene(scene = self.scene)
+            elif self.env_config["map"] == "cube":
+                self.map.add_cube_to_scene(scene = self.scene)
 
         # add plane (ground)
         self.plane = self.scene.add_entity(gs.morphs.Plane())
@@ -182,14 +181,14 @@ class Genesis_env :
         setattr(self.drone, 'cam', cam)
 
     def set_target_phere_for_vis(self):
-        if self.env_config["use_waypoints"]:
+        if self.env_config["vis_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
-                    file="assets/sphere/sphere.obj",
+                    file="assets/simple/sphere.obj",
                     scale=0.02,
                     fixed=False,
                     collision=False,
-                    visual=self.env_config["vis_waypoints"]
+                    visualization=True
                 ),
                 surface=gs.surfaces.Rough(
                     diffuse_texture=gs.textures.ColorTexture(
