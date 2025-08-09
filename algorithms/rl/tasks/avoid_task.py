@@ -12,8 +12,6 @@ from torch.nn import functional as F
 import statistics
 from collections import deque
 
-def gs_rand_float(lower, upper, shape, device):
-    return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 def barrier(x: torch.Tensor, v_to_pt):
     return (v_to_pt * (1 - x).relu().pow(2))
@@ -42,7 +40,7 @@ class Avoid_task(VecEnv):
         self.num_steps_per_env = self.train_config["num_steps_per_env"]
         self.reward_scales = task_config.get("reward_scales", {})
         self.obs_scales = task_config.get("obs_scales", {})
-        self.command_cfg = self.task_config.get("command_cfg", {})
+        self.command_cfg = torch.tensor(list(self.task_config["command_cfg"].values()), device=self.device)
         self.step_dt = self.env_config.get("dt", 0.01)
 
         # buffers
@@ -168,13 +166,16 @@ class Avoid_task(VecEnv):
         
     def _resample_commands(self, envs_idx=None):
         if envs_idx is None:
-            reset_range = torch.arange(self.num_envs, device=self.device)
+            reset = torch.arange(self.num_envs, device=self.device)
         else:
-            reset_range = envs_idx
-        self.command_buf[reset_range, 0] = gs_rand_float(*tuple(v + self.cur_iter/1000 for v in self.command_cfg["pos_x_range"]), (len(reset_range),), self.device)
-        # self.command_buf[reset_range, 0] = gs_rand_float(*self.command_cfg["pos_x_range"], (len(reset_range),), self.device)
-        self.command_buf[reset_range, 1] = gs_rand_float(*self.command_cfg["pos_y_range"], (len(reset_range),), self.device)
-        self.command_buf[reset_range, 2] = gs_rand_float(*self.command_cfg["pos_z_range"], (len(reset_range),), self.device)
+            reset = envs_idx
+
+        self.gs_rand_float(
+            reset_idx = reset,
+            bound = self.command_cfg, 
+            offset=torch.tensor([0.0, 0.0, 0.3], device=self.device), 
+            forbidden=self.genesis_env.get_aabb_list()
+        )
 
     def _register_reward_fun(self):
         for name in self.reward_scales.keys():
@@ -321,3 +322,46 @@ class Avoid_task(VecEnv):
 
             self.extras["episode"]["reward_" + key] = mean_reward
             self.episode_reward_sums[key][reset_range] = 0.0
+
+    def gs_rand_float(self, reset_idx, bound, offset=0.0, forbidden=None, max_retry=10):
+        """
+        Generate random points in [bound[:,0], bound[:,1]] + offset for each env,
+        avoiding forbidden AABBs (each with shape (B, 2, 3)).
+        """
+
+        device = self.command_buf.device
+        dtype = self.command_buf.dtype
+        B = reset_idx.shape[0]
+        if B == 0:
+            return
+
+        bound = bound.to(device=device, dtype=dtype)
+        lower = bound[:, 0]  # (3,)
+        upper = bound[:, 1]  # (3,)
+
+        def in_any_aabb(points, aabb_list):
+            mask = torch.zeros(B, dtype=torch.bool, device=device)
+            for aabb in aabb_list:
+                mins = aabb[reset_idx, 0, :]  # (B,3)
+                maxs = aabb[reset_idx, 1, :]  # (B,3)
+                inside = ((points >= mins) & (points <= maxs)).all(dim=1)
+                mask |= inside
+                if mask.all():
+                    break
+            return mask
+
+        points = torch.rand(B, 3, device=device, dtype=dtype) * (upper - lower) + lower + offset
+
+        if forbidden:
+            retry = 0
+            while retry < max_retry:
+                mask = in_any_aabb(points, forbidden)
+                if not mask.any():
+                    break
+                num_bad = mask.sum().item()
+                points[mask] = torch.rand(num_bad, 3, device=device, dtype=dtype) * (upper - lower) + lower + offset
+                retry += 1
+            if retry == max_retry:
+                print(f"[Warning] gs_rand_float reached max_retry={max_retry}, some points may still be inside forbidden zones")
+
+        self.command_buf[reset_idx, :].copy_(points)

@@ -143,15 +143,15 @@ class ForestEnv:
             scale = random.uniform(0.8, 1.2)
             roll = math.radians(random.uniform(0, 0.2))
             pitch = math.radians(random.uniform(0, 0.2))
-            yaw = math.radians(random.uniform(0, 90))
+            yaw = math.radians(random.uniform(0, 0.2))
             morph=morphs.Box(
-                pos=(x+0.2, y-1.5, 1.4),
+                pos=(x+0.2, y-1.5, 1.1),
                 euler=(
                     math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                scale=(scale*0.3, scale*0.3, scale*1.2),
+                size=(scale*0.1, scale*0.1, scale*1.2),
                 collision=True,
                 fixed=True,
                 visualization=True,

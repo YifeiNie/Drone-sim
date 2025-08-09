@@ -19,7 +19,7 @@ show_viewer: True
 render_cam: True
 controller: "angle"
 map: "cube"
-min_dis: 0.9
+min_dis: 0.6
 map_width: 2
 map_length: 3
 # ======== waypoints= =======

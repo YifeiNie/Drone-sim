@@ -188,7 +188,6 @@ class Genesis_env :
                     scale=0.02,
                     fixed=False,
                     collision=False,
-                    visualization=True
                 ),
                 surface=gs.surfaces.Rough(
                     diffuse_texture=gs.textures.ColorTexture(
@@ -248,7 +247,7 @@ class Genesis_env :
         """
         aabb_list = []
         for entity in self.scene.entities:
-            if (entity.idx == self.plane.idx or entity.idx == self.target.idx):
+            if entity.idx == self.plane.idx or (self.target is not None and entity.idx == self.target.idx):
                 continue
             aabb_list.append(entity.get_AABB())
         return aabb_list
