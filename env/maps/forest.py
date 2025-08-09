@@ -141,17 +141,17 @@ class ForestEnv:
         positions = self.generate_poisson_points()
         for x, y in positions:
             scale = random.uniform(0.8, 1.2)
-            roll = math.radians(random.uniform(0, 2))
-            pitch = math.radians(random.uniform(0, 2))
-            yaw = math.radians(random.uniform(0, 2))
+            roll = math.radians(random.uniform(0, 0.2))
+            pitch = math.radians(random.uniform(0, 0.2))
+            yaw = math.radians(random.uniform(0, 90))
             morph=morphs.Box(
-                pos=(x+0.2, y-1.5, 0),
+                pos=(x+0.2, y-1.5, 1.4),
                 euler=(
                     math.degrees(roll),  # roll
                     math.degrees(pitch),      # pitch  
                     math.degrees(yaw)         # yaw
                 ),
-                size=(scale*0.2, scale*0.2, scale*2.2),
+                scale=(scale*0.3, scale*0.3, scale*1.2),
                 collision=True,
                 fixed=True,
                 visualization=True,

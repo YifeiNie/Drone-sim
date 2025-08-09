@@ -188,6 +188,7 @@ class Genesis_env :
                     scale=0.02,
                     fixed=False,
                     collision=False,
+                    visualization=True
                 ),
                 surface=gs.surfaces.Rough(
                     diffuse_texture=gs.textures.ColorTexture(
