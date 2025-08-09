@@ -30,7 +30,7 @@ task:
   command_cfg:
     pos_x_range: [-1.0, -0.2] 
     pos_y_range: [-1.2, 1.2] 
-    pos_z_range: [0.7, 1.1] 
+    pos_z_range: [0.8, 1.2] 
 
   num_obs_state: 17                   # quat*4, ang_rate*3, lin_acc*3, last_action*4 
   num_obs_img_raw: [1, 12, 16]        # raw is[1, 48, 64], after pooling is [1, 12, 16]

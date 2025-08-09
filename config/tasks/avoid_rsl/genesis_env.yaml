@@ -27,7 +27,7 @@ map_length: 3
 
 init_x_range: [-0.61, -0.59] 
 init_y_range: [-0.05, 0.05] 
-init_z_range: [0.7, 0.71] 
+init_z_range: [0.6, 0.61] 
 target_thr: 0.1 
 
 
