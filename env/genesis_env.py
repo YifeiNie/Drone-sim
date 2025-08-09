@@ -74,7 +74,7 @@ class Genesis_env :
         self.map = ForestEnv(
             min_tree_dis = 0.7, 
             width = 3, 
-            length = 3
+            length = 2
         )
 
         # add entity in map
@@ -182,13 +182,14 @@ class Genesis_env :
         setattr(self.drone, 'cam', cam)
 
     def set_target_phere_for_vis(self):
-        if self.env_config["vis_waypoints"]:
+        if self.env_config["use_waypoints"]:
             self.target = self.scene.add_entity(
                 morph=gs.morphs.Mesh(
                     file="assets/sphere/sphere.obj",
                     scale=0.02,
                     fixed=False,
                     collision=False,
+                    visual=self.env_config["vis_waypoints"]
                 ),
                 surface=gs.surfaces.Rough(
                     diffuse_texture=gs.textures.ColorTexture(
